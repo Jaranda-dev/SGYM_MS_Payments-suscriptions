@@ -1,503 +1,135 @@
-import { HttpContext } from '@adonisjs/core/http'
+import type { HttpContext } from '@adonisjs/core/http'
 import User from '#models/user'
-import UserQrCode from '#models/user_qr_code'
-import QRCode from 'qrcode'
-import { v4 as uuidv4 } from 'uuid'
-import mail from '@adonisjs/mail/services/main'
-import Otp from '#models/otp'
-import Role from '#models/role'
-import JwtRefreshToken from '#models/jwt_refresh_token'
-import { convertToObject } from 'typescript'
-import Subscription from '#models/subscription'
-import Membership from '#models/membership'
+import hash from '@adonisjs/core/services/hash'
 import { DateTime } from 'luxon'
 
-
 export default class UsersController {
-  public async accessByQr({ request, auth, response }: HttpContext) {
-    const { email, password } = request.all()
-    let user: User
-
-    try {
-        user = await User.verifyCredentials(email, password)
-    } catch {
-        return response.unauthorized({
-            status: 'error',
-            data: {},
-            msg: 'Credenciales incorrectas.',
-        })
-    }
-
-    // return await auth.use('jwt').generate(user)
-
-    try {
-      const refreshToken = await User.refreshTokens.create(user)
-      const accessToken = await auth.use('jwt').generate(user)
-      const jwt = accessToken as { token: string }
-      return response.ok({
-          status: 'success',
-          data: {
-            access_token: jwt.token,
-            refreshToken: refreshToken
-          },
-          msg: 'Tokens generados correctamente.',
-      })
-    } catch {
-      
-    }
+  // Listar usuarios
+  public async index({ auth,response }: HttpContext) {
+       const user = await auth.authenticate()
+       if (user.roleId !== 1) {
+    return response.ok({
+      status: 'success',
+      data: 
+        {
+          id: user.id,
+          email: user.email,
+          role_id: user.roleId,
+          is_active: user.isActive,
+          last_access: user.lastAccess,
+        }
+      ,
+      msg: 'Datos del usuario autenticado.',
+    })
   }
-
-
-  public async accessByQrI({ request, response }: HttpContext) {
-  try {
-    const { qr_token } = request.only(['qr_token'])
-    console.log('[INFO] QR Token recibido:', qr_token)
-
-    if (!qr_token) {
-      console.warn('[WARN] Token QR no proporcionado')
-      return response.badRequest({
-        status: 'error',
-        data: {},
-        msg: 'Token QR requerido.',
-      })
-    }
-
-    const userQrCode = await UserQrCode.findBy('qrToken', qr_token)
-    console.log('[INFO] Resultado de UserQrCode:', userQrCode)
-
-    if (!userQrCode) {
-      console.warn('[WARN] QR inválido o no registrado')
-      return response.status(404).json({
-        status: 'error',
-        data: {},
-        msg: 'QR inválido o no registrado.',
-      })
-    }
-
-    const user = await User.find(userQrCode.userId)
-    console.log('[INFO] Usuario encontrado:', user)
-
-    if (!user) {
-      console.warn('[WARN] Usuario no encontrado con ID:', userQrCode.userId)
-      return response.status(404).json({
-        status: 'error',
-        data: {},
-        msg: 'Usuario no encontrado.',
-      })
-    }
-
-    if (!user.isActive) {
-      console.warn('[WARN] Usuario inactivo:', user.id)
-      return response.status(403).json({
-        status: 'error',
-        data: {
-          user_id: user.id,
-        },
-        msg: 'Usuario inactivo. Contacte a recepción.',
-      })
-    }
-
-    const subscription = await Subscription.query()
-      .where('user_id', user.id)
-      .andWhere('status', 'active')
-      .first()
-
-    console.log('[INFO] Suscripción activa encontrada:', subscription)
-
-    if (!subscription) {
-      const expiredSubscription = await Subscription.query()
-        .where('user_id', user.id)
-        .orderBy('end_date', 'desc')
-        .first()
-
-      console.warn('[WARN] No hay suscripción activa. Última suscripción encontrada:', expiredSubscription)
-
-      return response.status(403).json({
-        status: 'error',
-        data: {
-          user_id: user.id,
-          subscription_status: expiredSubscription?.status || 'none',
-        },
-        msg: 'Suscripción expirada. No se permite el acceso.',
-      })
-    }
-
-    const membership = await Membership.find(subscription.membershipId)
-    console.log('[INFO] Membresía encontrada:', membership)
-
-    if (!membership) {
-      console.error('[ERROR] Membresía no encontrada con ID:', subscription.membershipId)
-      return response.status(500).json({
-        status: 'error',
-        data: {},
-        msg: 'Error inesperado del servidor',
-      })
-    }
-
-    const accessTime = DateTime.now()
-    console.log('[INFO] Acceso autorizado en:', accessTime.toISO())
+    const users = await User.query().select('id', 'email', 'role_id', 'is_active', 'last_access')
 
     return response.ok({
       status: 'success',
-      data: {
-        user_id: user.id,
-        email: user.email,
-        subscription_status: subscription.status,
-        membership: membership.name,
-        valid_until: subscription.endDate.toISODate(),
-        access_time: accessTime.toISO(),
-      },
-      msg: `Acceso permitido. Bienvenido ${user.email}.`,
-    })
-  } catch (error) {
-    console.error('[ERROR] Excepción atrapada en accessByQrI:', error)
-    return response.status(500).json({
-      status: 'error',
-      data: {},
-      msg: 'Error inesperado del servidor',
-    })
-  }
-}
-
-
-
-
-
-  public async refresh({auth, response}: HttpContext) {
-    const user = await auth.use('jwt').authenticateWithRefreshToken()
-    const newRefreshToken = user.currentToken
-    const newToken = await auth.use('jwt').generate(user)
-
-    return response.ok({
-      status: 'success',
-      data: {
-        token: newToken,
-        refreshToken: newRefreshToken,
-      },
-      msg: 'Token refrescado correctamente'
+      data: users,
+      msg: 'Lista de usuarios obtenida correctamente.'
     })
   }
 
-  //Borrar después de pruebas
-  public async crear({request, response}: HttpContext) {
-    const { email, password, role_id } = request.all()
-    const newUser = await User.create({
-        roleId: role_id,
-        email: email,
-        password: password,
-        isActive: true
-    })
-    return response.created(newUser)
-  }
+  // Crear usuario
+  public async store({ request, response }: HttpContext) {
+    const payload = request.only(['email', 'password', 'password_confirmation', 'role_id'])
 
-  public async logout({auth, response}: HttpContext) {
-      try {
-        const user = await auth.authenticate()
-        await JwtRefreshToken.query().where('tokenable_id', user.id).delete()
-        return response.ok({
-          status: 'success',
-          data: {},
-          msg: 'Sesión cerrada correctamente'
-        })
-      } catch (error) {
-        return response.internalServerError({
-          status: 'error',
-          data: {},
-          msg: 'No se pudo cerrar la sesión. Intenta de nuevo.',
-          error: error.message,
-        })
-      }
-  }
-
-  public async forgotPassword({request, response}: HttpContext) {
-    const { email } = request.only(['email'])
-
-    const user = await User.findBy('email', email)
-
-    if(!user) {
-        return response.notFound({
-            status: 'error',
-            data: {
-                email:email
-            },
-            msg: 'El correo electrónico no está registrado en el sistema.',
-        })
+    if (payload.password !== payload.password_confirmation) {
+      return response.badRequest({ status: 'error', data: {}, msg: 'Las contraseñas no coinciden' })
     }
 
-    const token = Math.floor(10000 + Math.random() * 90000).toString()
-    await Otp.create({
-      userId: user.id,
-      token: token,
-      isActive: true
-    })
-
-    await mail.send((message) => {
-      message
-        .to(email)
-        .from('help@paginachidota.lat')
-        .subject('Recupera tu contraseña')
-        .text(`Tu token de recuperación es: ${token}`)
-    })
-
-    return response.ok({
-        status: 'success',
-        data: {
-            email: email
-        },
-        msg: 'Se ha enviado un enlace de recuperación a su correo electrónico.',
-    })
-  }
-
-  public async resetPassword({request, response}: HttpContext) {
-    const { email, token, password, password_confirmation } = request.only(['email', 'token', 'password', 'password_confirmation'])
-
-    const user = await User.findBy('email', email)
-
-    if(!user) {
-        return response.notFound({
-            status: 'error',
-            data: {
-                email:email
-            },
-            msg: 'No se encontró un usuario con el correo proporcionado.',
-        })
+    const existingUser = await User.findBy('email', payload.email)
+    if (existingUser) {
+      return response.conflict({ status: 'error', data: {}, msg: 'El correo electrónico ya está registrado.' })
     }
 
-    const verifyToken = await Otp.query()
-      .where('token', token)
-      .andWhere('user_id', user.id)
-      .andWhere('is_active', true)
-      .first()
-
-    if(!verifyToken) {
-      return response.notFound({
-          status: 'error',
-          data: {
-              email:email
-          },
-          msg: 'El token proporcionado no es correcto.',
-      })
-    }
-
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/
-    if (!passwordRegex.test(password)) {
-        return response.badRequest({
-            status: 'error',
-            data: {},
-            msg: 'La nueva contraseña no cumple con los requisitos de seguridad.',
-        })
-    }
-
-    if (password !== password_confirmation) {
-        return response.badRequest({
-            status: 'error',
-            data: {},
-            msg: 'Las contraseñas no coinciden.',
-        })
-    }
-
-    verifyToken.isActive = false
-    await verifyToken.save()
-    user.password = password
+    const user = new User()
+    user.email = payload.email
+    user.password = payload.password
+    user.roleId = payload.role_id
+    user.isActive = true
     await user.save()
-
-    return response.ok({
-        status: 'success',
-        data: {
-            email:email
-        },
-        msg: 'Contraseña restablecida exitosamente. Ya puedes iniciar sesión con tu nueva contraseña.',
-    })
-
-  }
-
-  public async changePassword({request, response, auth}: HttpContext) {
-    const { current_password, new_password, new_password_confirmation } = request.only(['current_password', 'new_password', 'new_password_confirmation'])
-
-    const user = await auth.authenticate()
-    const updateUser = await User.find(user.id)
-
-    if (!updateUser) {
-        return response.notFound({
-            status: 'error',
-            data: {},
-            msg: 'Usuario no encontrado',
-        })
-    }
-
-    // Verifica credenciales
-    try {
-        await User.verifyCredentials(user.email, current_password)
-    } catch {
-        return response.unauthorized({
-            status: 'error',
-            data: {},
-            msg: 'La contraseña actual es incorrecta.',
-        })
-    }
-
-    // Validación de contraseña
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/
-    if (!passwordRegex.test(new_password)) {
-        return response.badRequest({
-            status: 'error',
-            data: {},
-            msg: 'La nueva contraseña no cumple con los requisitos de seguridad.',
-        })
-    }
-
-    if (new_password !== new_password_confirmation) {
-        return response.badRequest({
-            status: 'error',
-            data: {},
-            msg: 'La confirmación de la nueva contraseña no coincide.',
-        })
-    }
-
-    // Guardado
-    updateUser.password = new_password
-    await updateUser.save()
-
-    return response.ok({
-        status: 'success',
-        data: {},
-        msg: 'Contraseña actualizada correctamente.',
-    })
-  }
-
-  public async generateQr({ params, response, auth }: HttpContext) {
-    const userId = Number(params.id)
-    const requester = await auth.authenticate()
-
-    const user = await User.find(userId)
-    if (!user) {
-      return response.notFound({
-        status: 'error',
-        data: {},
-        msg: 'Usuario no encontrado.'
-      })
-    }
-
-    const role = await Role.find(requester.id)
-
-    if (
-      !['admin', 'receptionist'].includes(role?.name ?? '') &&
-      requester.id !== user.id
-    ) {
-      return response.forbidden({
-        status: 'error',
-        data: {},
-        msg: 'No tiene permisos para realizar esta acción.',
-      })
-    }
-
-    const token = uuidv4()
-
-    const qrData = await QRCode.toDataURL(token)
-
-    const qr = await UserQrCode.firstOrNew({ userId: user.id })
-    qr.qrToken = token
-    await qr.save()
 
     return response.created({
       status: 'success',
       data: {
-        user_id: user.id,
-        qr_token: qr.qrToken,
-        qr_image_base64: qrData
+        id: user.id,
+        email: user.email,
+        role_id: user.roleId,
+        is_active: user.isActive,
+        last_access: user.lastAccess,
+        created_at: DateTime.now().toISO(),
       },
-      msg: 'Código QR generado exitosamente.'
+      msg: 'Usuario creado exitosamente.'
     })
   }
 
-  public async getQr({ params, response, auth }: HttpContext) {
-    const userId = Number(params.id)
-    const requester = await auth.authenticate()
-
-    const user = await User.find(userId)
-    if (!user) {
-      return response.notFound({
-        status: 'error',
-        data: {},
-        msg: 'Usuario no encontrado.',
-      })
-    }
-
-    const role = await Role.find(requester.id)
-
-    if (
-      !['admin', 'receptionist'].includes(role?.name ?? '') &&
-      requester.id !== user.id
-    ) {
-      return response.forbidden({
-        status: 'error',
-        data: {},
-        msg: 'No tiene permisos para realizar esta acción.',
-      })
-    }
-
-    const qrRecord = await UserQrCode.findBy('userId', userId)
-    if (!qrRecord?.qrToken) {
-      return response.notFound({
-        status: 'error',
-        data: {},
-        msg: 'Código QR no encontrado para el usuario.',
-      })
-    }
-
-    const qrData = await QRCode.toDataURL(qrRecord.qrToken)
-
-    return response.ok({
-      status: 'success',
-      data: {
-        user_id: userId,
-        qr_token: qrRecord.qrToken,
-        qr_image_base64: qrData,
-      },
-      msg: 'Código QR obtenido correctamente.',
-    })
-  }
-
-  public async deleteQr({ params, response, auth }: HttpContext) {
+  
+  public async show({ params, response }: HttpContext) {
     const user = await User.find(params.id)
-    const requester = await auth.authenticate()
-
-    if(!user) {
-        return response.notFound({
-            status: 'error',
-            data: {},
-            msg: 'Usuario no encontrado',
-        })
+    if (!user) {
+      return response.notFound({ status: 'error', data: { id: params.id }, msg: 'Usuario no encontrado.' })
     }
-
-    const role = await Role.find(requester.id)
-
-    if (!['admin', 'receptionist'].includes(role?.name ?? '')) {
-      return response.forbidden({
-        status: 'error',
-        data: {},
-        msg: 'No tiene permisos para realizar esta acción.',
-      })
-    }
-
-    const qrUser = await UserQrCode.findBy('userId', params.id)
-
-    if(!qrUser) {
-      return response.notFound({
-      status: 'error',
-      data: {},
-      msg: 'Código QR no encontrado para el usuario.',
-      })
-    }
-
-    await qrUser.delete()
 
     return response.ok({
       status: 'success',
       data: {
-          user_id: qrUser.userId,
+        id: user.id,
+        email: user.email,
+        role_id: user.roleId,
+        is_active: user.isActive,
+        last_access: user.lastAccess,
       },
-      msg: 'Código QR eliminado correctamente.',
+      msg: 'Datos del usuario obtenidos correctamente.'
+    })
+  }
+
+
+  public async update({ params, request, response }: HttpContext) {
+    const user = await User.find(params.id)
+    if (!user) {
+      return response.notFound({ status: 'error', data: { id: params.id }, msg: 'Usuario no encontrado.' })
+    }
+
+    const data = request.only(['email', 'role_id', 'is_active'])
+
+    if (data.email && data.email !== user.email) {
+      const otherUser = await User.findBy('email', data.email)
+      if (otherUser && otherUser.id !== user.id) {
+        return response.conflict({ status: 'error', data: { email: data.email }, msg: 'El correo electrónico ya está en uso.' })
+      }
+    }
+
+    user.merge(data)
+    await user.save()
+
+    return response.ok({
+      status: 'success',
+      data: {
+        id: user.id,
+        email: user.email,
+        role_id: user.roleId,
+        is_active: user.isActive,
+        last_access: user.lastAccess,
+      },
+      msg: 'Usuario actualizado correctamente.'
+    })
+  }
+
+
+  public async destroy({ params, response }: HttpContext) {
+    const user = await User.find(params.id)
+    if (!user) {
+      return response.notFound({ status: 'error', data: { id: params.id }, msg: 'Usuario no encontrado.' })
+    }
+
+    await user.delete()
+
+    return response.ok({
+      status: 'success',
+      data: { id: user.id },
+      msg: 'Usuario eliminado correctamente.'
     })
   }
 }

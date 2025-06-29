@@ -1,50 +1,94 @@
-/*
-|--------------------------------------------------------------------------
-| Routes file
-|--------------------------------------------------------------------------
-|
-| The routes file is used for defining the HTTP routes.
-|
-*/
-
 import router from '@adonisjs/core/services/router'
-import { middleware } from './kernel.js'
-const UsersController = () => import('#controllers/users_controller')
-const OauthController = () => import('#controllers/OAuth/auth_controller')
-
-router.get('/', async () => {
-  return {
-    hello: 'world',
-  }
-})
-//Borrar
-router.post('/users', [UsersController, 'crear'])
+import UsersController from '#controllers/users_controller'
+import ProfilesController from '#controllers/profiles_controller'
+import OccupanciesController from '#controllers/occupancies_controller'
+import RolsController from '#controllers/rols_controller'
+import PermissionsController from '#controllers/permissions_controller'
+import RolePermissionsController from '#controllers/role_permissions_controller'
+import UserAddressesController from '#controllers/user_addresses_controller'
 
 
-router.post('/access/refresh', [UsersController, 'refresh'])
-router.post('/auth/logout', [UsersController, 'logout']).use(middleware.auth())
 
-router.post('/auth/forgot-password', [UsersController, 'forgotPassword'])
-router.post('/auth/reset-password', [UsersController, 'resetPassword'])
-router.put('/auth/change-password', [UsersController, 'changePassword']).use(middleware.auth())
+// Instancias de controladores
+const usersController = new UsersController()
+const profilesController = new ProfilesController()
+const occupanciesController = new OccupanciesController()
+const roles = new RolsController()
+const permissions = new PermissionsController()
+const rolePerms = new RolePermissionsController()
+const addresses = new UserAddressesController()
 
-router.get('/users/:id/qr', [UsersController, 'getQr']).use(middleware.auth())
-router.post('/users/:id/qr', [UsersController, 'generateQr']).use(middleware.auth())
-router.delete('/users/:id/qr', [UsersController, 'deleteQr']).use(middleware.auth())
+// -------------------------
+// Usuarios
+// -------------------------
 
-router.group(() => {
-  router.get('/login', [OauthController, 'showLogin']).as('oauth.login')
-  router.get('/register', [OauthController, 'showRegister']).as('oauth.register')
-  router.get('/forgotpassword', [OauthController, 'showForgotPassword']).as('oauth.forgotpassword')
-   router.get('/resetpassword', [OauthController, 'showResetPassword']).as('oauth.resetpassword')
+// Listar usuarios
+router.get('/users', async (ctx) => usersController.index(ctx))
+
+// Crear usuario
+router.post('/users', async (ctx) => usersController.store(ctx))
+
+// Obtener usuario por ID
+router.get('/users/:id', async (ctx) => usersController.show(ctx))
+
+// Actualizar usuario
+router.put('/users/:id', async (ctx) => usersController.update(ctx))
+
+// Eliminar usuario
+router.delete('/users/:id', async (ctx) => usersController.destroy(ctx))
+
+// -------------------------
+// Perfiles
+// -------------------------
+
+// Crear perfil
+router.post('/users/profile', async (ctx) => profilesController.store(ctx))
+
+// Obtener perfil
+router.get('/users/:id/profile', async (ctx) => profilesController.show(ctx))
+
+// Actualizar perfil
+router.put('/users/:id/profile', async (ctx) => profilesController.update(ctx))
+
+// Eliminar perfil
+router.delete('/users/:id/profile', async (ctx) => profilesController.destroy(ctx))
+
+// -------------------------
+// Ocupación
+// -------------------------
+
+// Listar ocupación (con filtros opcionales)
+router.get('/occupancy', async (ctx) => occupanciesController.index(ctx))
+
+// Registrar ocupación
+router.post('/occupancy', async (ctx) => occupanciesController.store(ctx))
 
 
-  router.post('/login', [OauthController, 'login']).as('oauth.login.submit')
-  router.post('/register', [OauthController, 'register']).as('oauth.register.submit')
-  router.post('/resetpassword', [OauthController, 'resetPassword']).as('oauth.resetpassword.submit')
-  router.post('/forgotpassword', [OauthController, 'forgotPassword']).as('oauth.forgotPassword.submit')
-  
-}).prefix('/oauth')
+
+router.get('/roles', (ctx) => roles.index(ctx))
+router.get('/roles/:id', (ctx) => roles.show(ctx))
+router.post('/roles', (ctx) => roles.store(ctx))
+router.put('/roles/:id', (ctx) => roles.update(ctx))
+router.delete('/roles/:id', (ctx) => roles.destroy(ctx))
 
 
-router.post('/access/qr', [UsersController, 'accessByQrI'])
+
+
+router.get('/permissions', async (ctx) => permissions.index(ctx))
+router.get('/permissions/:id', async (ctx) => permissions.show(ctx))
+router.post('/permissions', async (ctx) => permissions.store(ctx))
+router.put('/permissions/:id', async (ctx) => permissions.update(ctx))
+router.delete('/permissions/:id', async (ctx) => permissions.destroy(ctx))
+
+
+
+router.post('/roles/:role_id/permissions', async (ctx) => rolePerms.assign(ctx))
+router.delete('/roles/:role_id/permissions/:permission_id', async (ctx) => rolePerms.remove(ctx))
+
+
+
+router.get('/profiles/:profile_id/addresses', async (ctx) => addresses.index(ctx))
+router.post('/profiles/:profile_id/addresses', async (ctx) => addresses.store(ctx))
+router.get('/addresses/:id', async (ctx) => addresses.show(ctx))
+router.put('/addresses/:id', async (ctx) => addresses.update(ctx))
+router.delete('/addresses/:id', async (ctx) => addresses.destroy(ctx))
