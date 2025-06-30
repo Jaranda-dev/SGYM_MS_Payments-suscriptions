@@ -18,77 +18,80 @@ const permissions = new PermissionsController()
 const rolePerms = new RolePermissionsController()
 const addresses = new UserAddressesController()
 
+import { middleware } from './kernel.js'
+
+
 // -------------------------
 // Usuarios
 // -------------------------
 
 // Listar usuarios
-router.get('/users', async (ctx) => usersController.index(ctx))
+router.get('/users', async (ctx) => usersController.index(ctx)).use(middleware.auth())
 
 // Crear usuario
-router.post('/users', async (ctx) => usersController.store(ctx))
+router.post('/users', async (ctx) => usersController.store(ctx)).use(middleware.auth())
 
 // Obtener usuario por ID
-router.get('/users/:id', async (ctx) => usersController.show(ctx))
+router.get('/users/:id', async (ctx) => usersController.show(ctx)).use(middleware.auth())
 
 // Actualizar usuario
-router.put('/users/:id', async (ctx) => usersController.update(ctx))
+router.put('/users/:id', async (ctx) => usersController.update(ctx)).use(middleware.auth())
 
-// Eliminar usuario
-router.delete('/users/:id', async (ctx) => usersController.destroy(ctx))
+
+router.delete('/users/:id', async (ctx) => usersController.destroy(ctx)).use(middleware.auth())
 
 // -------------------------
 // Perfiles
 // -------------------------
 
 // Crear perfil
-router.post('/users/profile', async (ctx) => profilesController.store(ctx))
+router.post('/users/profile', async (ctx) => profilesController.store(ctx)).use(middleware.auth())
 
 // Obtener perfil
-router.get('/users/:id/profile', async (ctx) => profilesController.show(ctx))
+router.get('/users/:id/profile', async (ctx) => profilesController.show(ctx)).use(middleware.auth())
 
 // Actualizar perfil
-router.put('/users/:id/profile', async (ctx) => profilesController.update(ctx))
+router.put('/users/:id/profile', async (ctx) => profilesController.update(ctx)).use(middleware.auth())
 
 // Eliminar perfil
-router.delete('/users/:id/profile', async (ctx) => profilesController.destroy(ctx))
+router.delete('/users/:id/profile', async (ctx) => profilesController.destroy(ctx)).use(middleware.auth())
 
 // -------------------------
 // Ocupación
 // -------------------------
 
 // Listar ocupación (con filtros opcionales)
-router.get('/occupancy', async (ctx) => occupanciesController.index(ctx))
+router.get('/occupancy', async (ctx) => occupanciesController.index(ctx)).use(middleware.auth())
 
 // Registrar ocupación
-router.post('/occupancy', async (ctx) => occupanciesController.store(ctx))
+router.post('/occupancy', async (ctx) => occupanciesController.store(ctx)).use(middleware.auth())
 
 
 
-router.get('/roles', (ctx) => roles.index(ctx))
-router.get('/roles/:id', (ctx) => roles.show(ctx))
-router.post('/roles', (ctx) => roles.store(ctx))
-router.put('/roles/:id', (ctx) => roles.update(ctx))
-router.delete('/roles/:id', (ctx) => roles.destroy(ctx))
+router.get('/roles', (ctx) => roles.index(ctx)).use(middleware.auth())
+router.get('/roles/:id', (ctx) => roles.show(ctx)).use(middleware.auth())
+router.post('/roles', (ctx) => roles.store(ctx)).use(middleware.auth())
+router.put('/roles/:id', (ctx) => roles.update(ctx)).use(middleware.auth())
+router.delete('/roles/:id', (ctx) => roles.destroy(ctx)).use(middleware.auth())
 
 
 
 
-router.get('/permissions', async (ctx) => permissions.index(ctx))
-router.get('/permissions/:id', async (ctx) => permissions.show(ctx))
-router.post('/permissions', async (ctx) => permissions.store(ctx))
-router.put('/permissions/:id', async (ctx) => permissions.update(ctx))
-router.delete('/permissions/:id', async (ctx) => permissions.destroy(ctx))
+router.get('/permissions', async (ctx) => permissions.index(ctx)).use(middleware.auth())
+router.get('/permissions/:id', async (ctx) => permissions.show(ctx)).use(middleware.auth())
+router.post('/permissions', async (ctx) => permissions.store(ctx)).use(middleware.auth())
+router.put('/permissions/:id', async (ctx) => permissions.update(ctx)).use(middleware.auth())
+router.delete('/permissions/:id', async (ctx) => permissions.destroy(ctx)).use(middleware.auth())
 
 
 
-router.post('/roles/:role_id/permissions', async (ctx) => rolePerms.assign(ctx))
-router.delete('/roles/:role_id/permissions/:permission_id', async (ctx) => rolePerms.remove(ctx))
+router.post('/roles/:role_id/permissions', async (ctx) => rolePerms.assign(ctx)).use(middleware.auth())
+router.delete('/roles/:role_id/permissions/:permission_id', async (ctx) => rolePerms.remove(ctx)).use(middleware.auth())
 
 
 
-router.get('/profiles/:profile_id/addresses', async (ctx) => addresses.index(ctx))
-router.post('/profiles/:profile_id/addresses', async (ctx) => addresses.store(ctx))
-router.get('/addresses/:id', async (ctx) => addresses.show(ctx))
-router.put('/addresses/:id', async (ctx) => addresses.update(ctx))
-router.delete('/addresses/:id', async (ctx) => addresses.destroy(ctx))
+router.get('/profiles/:profile_id/addresses', async (ctx) => addresses.index(ctx)).use(middleware.auth())
+router.post('/profiles/:profile_id/addresses', async (ctx) => addresses.store(ctx)).use(middleware.auth())
+router.get('/addresses/:id', async (ctx) => addresses.show(ctx)).use(middleware.auth())
+router.put('/addresses/:id', async (ctx) => addresses.update(ctx)).use(middleware.auth())
+router.delete('/addresses/:id', async (ctx) => addresses.destroy(ctx)).use(middleware.auth())
