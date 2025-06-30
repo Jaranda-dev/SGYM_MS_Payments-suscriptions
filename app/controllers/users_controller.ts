@@ -6,7 +6,7 @@ import { DateTime } from 'luxon'
 export default class UsersController {
   // Listar usuarios
   public async index({ auth,response }: HttpContext) {
-       const user = await auth.authenticate()
+       const user =await auth.use('jwt').authenticate()
        if (user.roleId !== 1) {
     return response.ok({
       status: 'success',
