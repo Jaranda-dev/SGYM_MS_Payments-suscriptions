@@ -95,3 +95,5 @@ router.post('/profiles/:profile_id/addresses', async (ctx) => addresses.store(ct
 router.get('/addresses/:id', async (ctx) => addresses.show(ctx)).use(middleware.auth())
 router.put('/addresses/:id', async (ctx) => addresses.update(ctx)).use(middleware.auth())
 router.delete('/addresses/:id', async (ctx) => addresses.destroy(ctx)).use(middleware.auth())
+
+

@@ -1,37 +1,48 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import User from '#models/user'
-import hash from '@adonisjs/core/services/hash'
 import { DateTime } from 'luxon'
 
 export default class UsersController {
   // Listar usuarios
-  public async index({ auth,response }: HttpContext) {
-       const user =await auth.use('jwt').authenticate()
-       if (user.roleId !== 1) {
+  public async index({ auth, response }: HttpContext) {
+  const user = await auth.use('jwt').authenticate()
+
+  if (user.roleId !== 1) {
     return response.ok({
       status: 'success',
-      data: 
-        {
-          id: user.id,
-          email: user.email,
-          role_id: user.roleId,
-          is_active: user.isActive,
-          last_access: user.lastAccess,
-        }
-      ,
+      data: {
+        id: user.id,
+        email: user.email,
+        role_id: user.roleId,
+        is_active: user.isActive,
+        last_access: user.lastAccess,
+      },
       msg: 'Datos del usuario autenticado.',
     })
   }
-    const users = await User.query().select('id', 'email', 'role_id', 'is_active', 'last_access')
 
-    return response.ok({
-      status: 'success',
-      data: users,
-      msg: 'Lista de usuarios obtenida correctamente.'
-    })
-  }
 
-  // Crear usuario
+  const users = await User.query().select('id', 'email', 'role_id', 'is_active', 'last_access')
+
+  const allUsers = users.map(u => u.toJSON())
+  const filteredUsers = allUsers.filter(u => u.id !== user.id)
+  filteredUsers.unshift({
+    id: user.id,
+    email: user.email,
+    role_id: user.roleId,
+    is_active: user.isActive,
+    last_access: user.lastAccess,
+  })
+
+  return response.ok({
+    status: 'success',
+    data: filteredUsers,
+    msg: 'Lista de usuarios obtenida correctamente.',
+  })
+}
+
+
+
   public async store({ request, response }: HttpContext) {
     const payload = request.only(['email', 'password', 'password_confirmation', 'role_id'])
 
