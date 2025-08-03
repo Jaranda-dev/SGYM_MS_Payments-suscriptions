@@ -225,3 +225,31 @@ router.group(() => {
     .delete('/diets/:diet_id/foods/:diet_food_id', async (ctx) => dietFoods.destroy(ctx))
     .use([middleware.auth(), middleware.checkPermission(['manage_diets'])])
 })
+
+
+
+import TrainerSchedulesController from '#controllers/trainer_schedules_controller'
+
+
+const controller = new TrainerSchedulesController()
+
+router.group(() => {
+  router.post('/', (ctx) => controller.store(ctx))
+    .use(middleware.checkPermission(['create_trainer_schedules']))
+
+  router.get('/', (ctx) => controller.index(ctx))
+    .use(middleware.checkPermission(['view_trainer_schedules']))
+
+  router.get('/:id', (ctx) => controller.show(ctx))
+    .use(middleware.checkPermission(['view_trainer_schedules']))
+
+  router.put('/:id', (ctx) => controller.update(ctx))
+    .use(middleware.checkPermission(['update_trainer_schedules']))
+
+  router.delete('/:id', (ctx) => controller.destroy(ctx))
+    .use(middleware.checkPermission(['delete_trainer_schedules']))
+
+  router.get('/user/token', (ctx) => controller.indexByUserAuth(ctx))
+
+  router.get('/trainer/token', (ctx) => controller.indexByTrainerAuth(ctx))
+}).prefix('/trainer-schedules').use(middleware.auth())
