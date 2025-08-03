@@ -230,6 +230,7 @@ router.group(() => {
 
 import TrainerSchedulesController from '#controllers/trainer_schedules_controller'
 import NutritionistSchedulesController from '#controllers/nutritionist_schedules_controller'
+import ScheduleController from '#controllers/schedules_controller'
 
 
 const controller = new TrainerSchedulesController()
@@ -285,3 +286,22 @@ router.group(() => {
 }).prefix('/nutritionist-schedules').use(middleware.auth())
 
 
+
+const scheduleController = new ScheduleController()
+
+router.group(() => {
+  router.post('/', (ctx) => scheduleController.store(ctx))
+  
+
+  router.get('/', (ctx) => scheduleController.index(ctx))
+   
+
+  router.get('/:id', (ctx) => scheduleController.show(ctx))
+    
+
+  router.put('/:id', (ctx) => scheduleController.update(ctx))
+
+
+  router.delete('/:id', (ctx) => scheduleController.destroy(ctx))
+
+}).prefix('/schedules').use(middleware.auth())
