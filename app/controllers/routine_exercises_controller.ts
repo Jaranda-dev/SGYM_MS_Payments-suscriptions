@@ -2,101 +2,53 @@ import type { HttpContext } from '@adonisjs/core/http'
 import RoutineExercise from '#models/routine_exercise'
 import Routine from '#models/routine'
 import Exercise from '#models/exercise'
+import vine from '@vinejs/vine'
 
 export default class RoutineExercisesController {
-  // POST /routine-exercises
-  public async store({ auth, request, response }: HttpContext) {
-    try {
-      const user = await auth.use('jwt').authenticate()
-      const { routine_id, exercise_id } = request.only(['routine_id', 'exercise_id'])
-
-      const routine = await Routine.query()
-        .where('id', routine_id)
-        .andWhere('user_id', user.id)
-        .first()
-
-      const exercise = await Exercise.find(exercise_id)
-
-      if (!routine || !exercise) {
-        return response.notFound({
-          status: 'error',
-          data: {},
-          msg: 'Rutina o ejercicio no encontrada.',
-        })
-      }
-
-      const routineExercise = await RoutineExercise.create({
-        routineId: routine.id,
-        exerciseId: exercise.id,
-      })
-
-      return response.created({
-        status: 'success',
-        data: {
-          id: routineExercise.id,
-          routine_id: routine.id,
-          exercise_id: exercise.id,
-        },
-        msg: 'Ejercicio asignado a la rutina correctamente.',
-      })
-    } catch {
-      return response.internalServerError({
-        status: 'error',
-        data: {},
-        msg: 'Error inesperado del servidor.',
-      })
-    }
-  }
-
-public async index({ auth, params, response }: HttpContext) {
+  /**
+   * Asignar ejercicio a rutina
+   * POST /routine-exercises
+   */
+public async store({ request, response }: HttpContext) {
   try {
-    console.log('▶ Iniciando consulta de ejercicios de la rutina')
+    const validator = vine.compile(
+      vine.object({
+        routine_id: vine.number().positive(),
+        exercise_id: vine.number().positive(),
+      })
+    )
 
-    const user = await auth.use('jwt').authenticate()
-    console.log('✅ Usuario autenticado:', user.id)
+    const payload = request.only(['routine_id', 'exercise_id'])
+    const data = await validator.validate(payload)
 
-    const routineId = params.id
-    console.log('🔍 Buscando rutina con ID:', routineId)
+    const routine = await Routine.find(data.routine_id)
+    const exercise = await Exercise.find(data.exercise_id)
 
-    const routine = await Routine.query()
-      .where('id', routineId)
-      .andWhere('user_id', user.id)
-      .first()
-
-    if (!routine) {
-      console.warn('⚠ Rutina no encontrada para el usuario:', user.id)
-      return response.notFound({
+    if (!routine || !exercise) {
+      return response.status(404).json({
         status: 'error',
         data: {},
-        msg: 'Rutina no encontrada.',
+        msg: 'Rutina o ejercicio no encontrada.',
       })
     }
 
-    console.log('✅ Rutina encontrada:', routine.id)
+    const relation = await RoutineExercise.create({
+      routineId: data.routine_id,
+      exerciseId: data.exercise_id,
+    })
 
-    const exercises = await Exercise.query()
-      .from('exercise') // Aquí está el cambio clave
-      .join('routine_exercise', 'exercise.id', 'routine_exercise.exercise_id')
-      .where('routine_exercise.routine_id', routine.id)
-      .select(
-        'exercise.id as exercise_id',
-        'name',
-        'description',
-        'equipment_type',
-        'video_url'
-      )
-
-    console.log(`✅ Se encontraron ${exercises.length} ejercicios para la rutina ${routine.id}`)
-
-    return response.ok({
+    return response.status(201).json({
       status: 'success',
-      data: exercises,
-      msg: 'Ejercicios de la rutina obtenidos correctamente.',
+      data: {
+        id: relation.id,
+        routine_id: relation.routineId,
+        exercise_id: relation.exerciseId,
+      },
+      msg: 'Ejercicio asignado a la rutina correctamente.',
     })
   } catch (error) {
-    console.error('💥 Error inesperado:', error)
-
-    return response.internalServerError({
+    console.error(error)
+    return response.status(500).json({
       status: 'error',
       data: {},
       msg: 'Error inesperado del servidor.',
@@ -105,32 +57,81 @@ public async index({ auth, params, response }: HttpContext) {
 }
 
 
+  /**
+   * Listar ejercicios de una rutina
+   * GET /routines/:id/exercises
+   */
+  public async index({ params, response }: HttpContext) {
+    try {
+      const routineId = Number(params.id)
+      const routine = await Routine.find(routineId)
 
-  // DELETE /routine-exercises/:id
-  public async destroy({ response, params }: HttpContext) {
+      if (!routine) {
+        return response.status(404).json({
+          status: 'error',
+          data: {},
+          msg: 'Rutina no encontrada.'
+        })
+      }
+
+      const relations = await RoutineExercise.query()
+        .where('routine_id', routineId)
+        .preload('exercise')
+
+      const data = relations.map((rel) => ({
+        exercise_id: rel.exerciseId,
+        name: rel.exercise.name,
+        description: rel.exercise.description,
+        equipment_type: rel.exercise.equipmentType,
+        video_url: rel.exercise.videoUrl,
+      }))
+
+      return response.status(200).json({
+        status: 'success',
+        data,
+        msg: 'Ejercicios de la rutina obtenidos correctamente.'
+      })
+    } catch (error) {
+      console.error(error)
+      return response.status(500).json({
+        status: 'error',
+        data: {},
+        msg: 'Error inesperado del servidor.'
+      })
+    }
+  }
+
+  /**
+   * Quitar ejercicio de una rutina
+   * DELETE /routine-exercises/:id
+   */
+  public async destroy({ params, response }: HttpContext) {
     try {
       const relation = await RoutineExercise.find(params.id)
 
       if (!relation) {
-        return response.notFound({
+        return response.status(404).json({
           status: 'error',
           data: {},
-          msg: 'Relacion no encontrada.',
+          msg: 'Relación no encontrada.'
         })
       }
 
       await relation.delete()
 
-      return response.ok({
+      return response.status(200).json({
         status: 'success',
-        data: { id: relation.id },
-        msg: 'Ejercicio eliminado de la rutina correctamente.',
+        data: {
+          id: relation.id
+        },
+        msg: 'Ejercicio eliminado de la rutina correctamente.'
       })
-    } catch {
-      return response.internalServerError({
+    } catch (error) {
+      console.error(error)
+      return response.status(500).json({
         status: 'error',
         data: {},
-        msg: 'Error inesperado del servidor.',
+        msg: 'Error inesperado del servidor.'
       })
     }
   }

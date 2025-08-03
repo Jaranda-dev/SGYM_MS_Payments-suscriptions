@@ -1,25 +1,24 @@
-import { BaseModel, column, belongsTo } from '@adonisjs/lucid/orm'
-import type { BelongsTo } from '@adonisjs/lucid/types/relations'
-import User from '#models/user'
+// app/models/routine.ts
+import { BaseModel, column, hasMany } from '@adonisjs/lucid/orm'
+import type { HasMany } from '@adonisjs/lucid/types/relations'
+import RoutineExercise from './routine_exercise.js'
+import UserRutine from './user_rutine.js'
 
 export default class Routine extends BaseModel {
-  static table = 'routine'
+      static table = 'routine'
 
   @column({ isPrimary: true })
-  declare id: number
-
-  @column()
-  declare day: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday' | 'everyday'
+  declare id: bigint
 
   @column()
   declare name: string
 
   @column()
-  declare description?: string
+  declare description: string | null
 
-  @column({ columnName: 'user_id' })
-  declare userId: number
+  @hasMany(() => RoutineExercise)
+  declare routineExercises: HasMany<typeof RoutineExercise>
 
-  @belongsTo(() => User)
-  declare user: BelongsTo<typeof User>
+  @hasMany(() => UserRutine)
+  declare userRutines: HasMany<typeof UserRutine>
 }

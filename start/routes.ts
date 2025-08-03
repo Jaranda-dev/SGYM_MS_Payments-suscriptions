@@ -7,9 +7,8 @@ import PermissionsController from '#controllers/permissions_controller'
 import RolePermissionsController from '#controllers/role_permissions_controller'
 import UserAddressesController from '#controllers/user_addresses_controller'
 import ExercisesController from '#controllers/exercises_controller'
-import RoutinesController from '#controllers/routines_controller'
-import RoutineExercises from '#controllers/routine_exercises_controller'
-
+const RoutinesController = () => import('#controllers/routines_controller')
+const UserRoutineController = () => import('#controllers/user_routines_controller')
 
 
 
@@ -21,11 +20,11 @@ const roles = new RolsController()
 const permissions = new PermissionsController()
 const rolePerms = new RolePermissionsController()
 const addresses = new UserAddressesController()
-const exercises = new ExercisesController()
-const routines = new RoutinesController()
-const routineExercises = new RoutineExercises()
+const exercise = new ExercisesController()
+
 
 import { middleware } from './kernel.js'
+import RoutineExercisesController from '#controllers/routine_exercises_controller'
 
 
 // -------------------------
@@ -104,53 +103,48 @@ router.put('/addresses/:id', async (ctx) => addresses.update(ctx)).use(middlewar
 router.delete('/addresses/:id', async (ctx) => addresses.destroy(ctx)).use(middleware.auth()).use(middleware.checkPermission(['edit_profile']))
 
 
-router.group(() => {
-  router.get('/exercises', async (ctx) => exercises.index(ctx)).use(middleware.auth())
-  router.get('/exercises/:id', async (ctx) => exercises.show(ctx)).use(middleware.auth())
-  router.post('/exercises', async (ctx) => exercises.store(ctx)).use(middleware.auth())
-  router.put('/exercises/:id', async (ctx) => exercises.update(ctx)).use(middleware.auth())
-  router.delete('/exercises/:id', async (ctx) => exercises.destroy(ctx)).use(middleware.auth())
-})
-
-
-
 router
   .group(() => {
-    router
-      .get('/routines', async (ctx) => routines.index(ctx))
-     
-
-    router
-      .get('/routines/:id', async (ctx) => routines.show(ctx))
-      
-
-    router
-      .post('/routines', async (ctx) => routines.store(ctx))
-     
-
-    router
-      .put('/routines/:id', async (ctx) => routines.update(ctx))
-      
-
-    router
-      .delete('/routines/:id', async (ctx) => routines.destroy(ctx))
-      
+   
+    router.get('/',  async (ctx) => exercise.index(ctx)).use(middleware.checkPermission(['view_exercises']))
+    router.get('/:id',async (ctx) => exercise.show(ctx) ).use(middleware.checkPermission(['view_exercises']))
+    router.post('/',async (ctx) => exercise.store(ctx) ).use(middleware.checkPermission(['manage_exercises']))
+   router.put('/:id',async (ctx) => exercise.update(ctx) ).use(middleware.checkPermission(['manage_exercises']))
+     router.delete('/:id',async (ctx) => exercise.destroy(ctx)).use(middleware.checkPermission(['manage_exercises']))
   })
+  .prefix('/exercises')
   .use(middleware.auth())
 
-  router
-  .group(() => {
-    router
-      .post('/routine-exercises', async (ctx) => routineExercises.store(ctx))
-     
 
-    router
-      .get('/routines/:id/exercises', async (ctx) => routineExercises.index(ctx))
-     
+  
 
-    router
-      .delete('/routine-exercises/:id', async (ctx) => routineExercises.destroy(ctx))
-     
-  })
-  .use(middleware.auth())
 
+router.group(() => {
+  router.get('/', [RoutinesController, 'index']).use(middleware.checkPermission(['view_routines']))
+  router.get('/:id', [RoutinesController, 'show']).use(middleware.checkPermission(['view_routines']))
+  router.post('/', [RoutinesController, 'store']).use(middleware.checkPermission(['manage_routines']))
+  router.put('/:id', [RoutinesController, 'update']).use(middleware.checkPermission(['manage_routines']))
+  router.delete('/:id', [RoutinesController, 'destroy']).use(middleware.checkPermission(['manage_routines']))  
+}).prefix('/routines')  .use(middleware.auth())
+
+
+
+
+
+router.group(() => {
+  router.post('/', [UserRoutineController, 'store']).use(middleware.checkPermission(['assign_user_routines']))
+  router.get('/:user_id', [UserRoutineController, 'indexByUser']).use(middleware.checkPermission(['view_user_routines']))
+  router.get('/', [UserRoutineController, 'indexAuth'])
+  router.put('/:id', [UserRoutineController, 'update']).use(middleware.checkPermission(['manage_user_routines']))
+}).prefix('/user-routines').use(middleware.auth())
+
+
+
+
+const routineExercises = new RoutineExercisesController()
+
+router.group(() => {
+  router.post('/routine-exercises', async (ctx) => routineExercises.store(ctx)).use(middleware.checkPermission(['manage_routines']))
+  router.get('/routines/:id/exercises', async (ctx) => routineExercises.index(ctx)).use(middleware.checkPermission(['view_routines']))
+  router.delete('/routine-exercises/:id', async (ctx) => routineExercises.destroy(ctx)).use(middleware.checkPermission(['manage_routines']))
+}).use(middleware.auth())

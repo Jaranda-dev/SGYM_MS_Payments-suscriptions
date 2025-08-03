@@ -1,148 +1,105 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Routine from '#models/routine'
+import vine from '@vinejs/vine'
 
 export default class RoutinesController {
-  // GET /routines
-  public async index({ auth, response }: HttpContext) {
-    try {
-      const user = await auth.use('jwt').authenticate()
-      const routines = await Routine.query().where('user_id', user.id)
-
-      return response.ok({
-        status: 'success',
-        data: routines,
-        msg: 'Lista de rutinas obtenida correctamente.',
-      })
-    } catch {
-      return response.internalServerError({
-        status: 'error',
-        data: {},
-        msg: 'Error inesperado del servidor.',
-      })
-    }
+  // Listar todas las rutinas
+  public async index({ response }: HttpContext) {
+    const routines = await Routine.all()
+    return response.ok({
+      status: 'success',
+      data: routines,
+      msg: 'Lista de rutinas obtenida correctamente.'
+    })
   }
 
-  // GET /routines/:id
-  public async show({ auth, params, response }: HttpContext) {
-    try {
-      const user = await auth.use('jwt').authenticate()
-      const routine = await Routine.query()
-        .where('id', params.id)
-        .andWhere('user_id', user.id)
-        .first()
-
-      if (!routine) {
-        return response.notFound({
-          status: 'error',
-          data: {},
-          msg: 'Rutina no encontrada.',
-        })
-      }
-
-      return response.ok({
-        status: 'success',
-        data: routine,
-        msg: 'Rutina obtenida correctamente.',
-      })
-    } catch {
-      return response.internalServerError({
+  // Obtener rutina por ID
+  public async show({ params, response }: HttpContext) {
+    const routine = await Routine.find(params.id)
+    if (!routine) {
+      return response.notFound({
         status: 'error',
         data: {},
-        msg: 'Error inesperado del servidor.',
+        msg: 'Rutina no encontrada.'
       })
     }
+    return response.ok({
+      status: 'success',
+      data: routine,
+      msg: 'Rutina obtenida correctamente.'
+    })
   }
 
-  // POST /routines
-  public async store({ auth, request, response }: HttpContext) {
+  // Crear rutina
+  public async store({ request, response }: HttpContext) {
+    const schema = vine.object({
+      name: vine.string().minLength(3),
+      description: vine.string().minLength(5),
+    })
     try {
-      const user = await auth.use('jwt').authenticate()
-      const payload = request.only(['day', 'name', 'description'])
-
-      const routine = await Routine.create({
-        ...payload,
-        userId: user.id,
-      })
-
+      const payload = await vine.validate({ schema, data: request.all() })
+      const routine = await Routine.create(payload)
       return response.created({
         status: 'success',
         data: routine,
-        msg: 'Rutina creada exitosamente.',
+        msg: 'Rutina creada exitosamente.'
       })
-    } catch {
+    } catch (error) {
       return response.badRequest({
         status: 'error',
-        data: {},
-        msg: 'Datos inválidos. Verifique los campos ingresados.',
+        data: error.messages ?? {},
+        msg: 'Datos inválidos. Verifique los campos ingresados.'
       })
     }
   }
 
-  // PUT /routines/:id
-  public async update({ auth, params, request, response }: HttpContext) {
+  // Actualizar rutina
+  public async update({ params, request, response }: HttpContext) {
+    const schema = vine.object({
+      name: vine.string().minLength(3).optional(),
+      description: vine.string().minLength(5).optional(),
+    })
     try {
-      const user = await auth.use('jwt').authenticate()
-      const routine = await Routine.query()
-        .where('id', params.id)
-        .andWhere('user_id', user.id)
-        .first()
-
+      const payload = await vine.validate({ schema, data: request.all() })
+      const routine = await Routine.find(params.id)
       if (!routine) {
         return response.notFound({
           status: 'error',
           data: {},
-          msg: 'Rutina no encontrada.',
+          msg: 'Rutina no encontrada.'
         })
       }
-
-      const data = request.only(['day', 'name', 'description'])
-      routine.merge(data)
+      routine.merge(payload)
       await routine.save()
-
       return response.ok({
         status: 'success',
         data: routine,
-        msg: 'Rutina actualizada correctamente.',
+        msg: 'Rutina actualizada correctamente.'
       })
-    } catch {
+    } catch (error) {
       return response.badRequest({
         status: 'error',
-        data: {},
-        msg: 'Datos inválidos. Verifique los campos ingresados.',
+        data: error.messages ?? {},
+        msg: 'Datos inválidos. Verifique los campos ingresados.'
       })
     }
   }
 
-  // DELETE /routines/:id
-  public async destroy({ auth, params, response }: HttpContext) {
-    try {
-      const user = await auth.use('jwt').authenticate()
-      const routine = await Routine.query()
-        .where('id', params.id)
-        .andWhere('user_id', user.id)
-        .first()
-
-      if (!routine) {
-        return response.notFound({
-          status: 'error',
-          data: {},
-          msg: 'Rutina no encontrada.',
-        })
-      }
-
-      await routine.delete()
-
-      return response.ok({
-        status: 'success',
-        data: { id: routine.id },
-        msg: 'Rutina eliminada correctamente.',
-      })
-    } catch {
-      return response.internalServerError({
+  // Eliminar rutina
+  public async destroy({ params, response }: HttpContext) {
+    const routine = await Routine.find(params.id)
+    if (!routine) {
+      return response.notFound({
         status: 'error',
         data: {},
-        msg: 'Error inesperado del servidor.',
+        msg: 'Rutina no encontrada.'
       })
     }
+    await routine.delete()
+    return response.ok({
+      status: 'success',
+      data: { id: params.id },
+      msg: 'Rutina eliminada correctamente.'
+    })
   }
 }

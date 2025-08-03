@@ -1,126 +1,122 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Exercise from '#models/exercise'
+import vine from '@vinejs/vine'
 
 export default class ExercisesController {
-  // GET /exercises
-  public async index({ response }: HttpContext) {
-    try {
-      const exercises = await Exercise.all()
-      return response.ok({
-        status: 'success',
-        data: exercises,
-        msg: 'Lista de ejercicios obtenida correctamente.',
-      })
-    } catch {
-      return response.internalServerError({
-        status: 'error',
-        data: {},
-        msg: 'Error inesperado del servidor.',
-      })
-    }
+  // Listar todos los ejercicios
+  async index({ response }: HttpContext) {
+    const exercises = await Exercise.all()
+    return response.ok({
+      status: 'success',
+      data: exercises,
+      msg: 'Lista de ejercicios obtenida correctamente',
+    })
   }
 
-  // GET /exercises/:id
-  public async show({ params, response }: HttpContext) {
-    try {
-      const exercise = await Exercise.find(params.id)
-      if (!exercise) {
-        return response.notFound({
-          status: 'error',
-          data: {},
-          msg: 'Ejercicio no encontrado.',
-        })
-      }
+  // Obtener ejercicio por ID
+  async show({ params, response }: HttpContext) {
+    const exercise = await Exercise.find(params.id)
 
-      return response.ok({
-        status: 'success',
-        data: exercise,
-        msg: 'Ejercicio obtenido correctamente.',
-      })
-    } catch {
-      return response.internalServerError({
+    if (!exercise) {
+      return response.notFound({
         status: 'error',
         data: {},
-        msg: 'Error inesperado del servidor.',
+        msg: 'Ejercicio no encontrado',
       })
     }
+
+    return response.ok({
+      status: 'success',
+      data: exercise,
+      msg: 'Ejercicio obtenido correctamente',
+    })
   }
 
-  // POST /exercises
-  public async store({ request, response }: HttpContext) {
+  // Crear ejercicio
+  async store({ request, response }: HttpContext) {
+    const schema = vine.object({
+      name: vine.string().minLength(3),
+      description: vine.string().minLength(5),
+      equipment_type: vine.enum(['machine', 'bodyweight', 'other']),
+      video_url: vine.string().url().optional(),
+    })
+
     try {
-      const data = request.only(['name', 'description', 'equipment_type', 'video_url'])
-      const exercise = await Exercise.create(data)
+      const payload = await vine.validate({ schema, data: request.all() })
+
+      const exercise = await Exercise.create(payload)
 
       return response.created({
         status: 'success',
         data: exercise,
-        msg: 'Ejercicio creado exitosamente.',
+        msg: 'Ejercicio creado correctamente',
       })
-    } catch {
+    } catch (error) {
       return response.badRequest({
         status: 'error',
-        data: {},
-        msg: 'Datos inválidos. Verifique los campos ingresados.',
+        data: error.messages ?? {},
+        msg: 'Error al validar los datos del ejercicio',
       })
     }
   }
 
-  // PUT /exercises/:id
-  public async update({ params, request, response }: HttpContext) {
+  // Actualizar ejercicio
+  async update({ request, response, params }: HttpContext) {
+    const schema = vine.object({
+      name: vine.string().minLength(3).optional(),
+      description: vine.string().minLength(5).optional(),
+      equipment_type: vine.enum(['machine', 'bodyweight', 'other']).optional(),
+      video_url: vine.string().url().optional(),
+    })
+
     try {
+      const payload = await vine.validate({ schema, data: request.all() })
+
       const exercise = await Exercise.find(params.id)
+
       if (!exercise) {
         return response.notFound({
           status: 'error',
           data: {},
-          msg: 'Ejercicio no encontrado.',
+          msg: 'Ejercicio no encontrado',
         })
       }
 
-      const data = request.only(['name', 'description', 'equipment_type', 'video_url'])
-      exercise.merge(data)
+      exercise.merge(payload)
       await exercise.save()
 
       return response.ok({
         status: 'success',
         data: exercise,
-        msg: 'Ejercicio actualizado correctamente.',
+        msg: 'Ejercicio actualizado correctamente',
       })
-    } catch {
+    } catch (error) {
       return response.badRequest({
         status: 'error',
-        data: {},
-        msg: 'Datos inválidos. Verifique los campos ingresados.',
+        data: error.messages ?? {},
+        msg: 'Error al validar los datos',
       })
     }
   }
 
-  // DELETE /exercises/:id
-  public async destroy({ params, response }: HttpContext) {
-    try {
-      const exercise = await Exercise.find(params.id)
-      if (!exercise) {
-        return response.notFound({
-          status: 'error',
-          data: {},
-          msg: 'Ejercicio no encontrado.',
-        })
-      }
+  // Eliminar ejercicio
+  async destroy({ params, response }: HttpContext) {
+    const exercise = await Exercise.find(params.id)
 
-      await exercise.delete()
-
-      return response.ok({
-        status: 'success',
-        data: { id: exercise.id },
-        msg: 'Ejercicio eliminado correctamente.',
-      })
-    } catch {
-      return response.internalServerError({
+    if (!exercise) {
+      return response.notFound({
         status: 'error',
         data: {},
-        msg: 'Error inesperado del servidor.',
+        msg: 'Ejercicio no encontrado',
       })
     }
+
+    await exercise.delete()
+
+    return response.ok({
+      status: 'success',
+      data: {},
+      msg: 'Ejercicio eliminado correctamente',
+    })
   }
 }
