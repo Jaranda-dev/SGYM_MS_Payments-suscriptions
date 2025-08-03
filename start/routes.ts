@@ -229,6 +229,7 @@ router.group(() => {
 
 
 import TrainerSchedulesController from '#controllers/trainer_schedules_controller'
+import NutritionistSchedulesController from '#controllers/nutritionist_schedules_controller'
 
 
 const controller = new TrainerSchedulesController()
@@ -253,3 +254,34 @@ router.group(() => {
 
   router.get('/trainer/token', (ctx) => controller.indexByTrainerAuth(ctx))
 }).prefix('/trainer-schedules').use(middleware.auth())
+
+
+
+
+
+const nutritionistSchedulesController = new NutritionistSchedulesController()
+
+router.group(() => {
+  router.post('/', (ctx) => nutritionistSchedulesController.store(ctx))
+   
+
+  router.get('/', (ctx) => nutritionistSchedulesController.index(ctx))
+   
+
+  router.get('/:id', (ctx) => nutritionistSchedulesController.show(ctx))
+
+
+  router.put('/:id', (ctx) => nutritionistSchedulesController.update(ctx))
+   
+
+  router.delete('/:id', (ctx) => nutritionistSchedulesController.destroy(ctx))
+   
+
+  router.get('/user/token', (ctx) => nutritionistSchedulesController.indexByUserAuth(ctx))
+   
+
+  router.get('/nutritionist/token', (ctx) => nutritionistSchedulesController.indexByNutritionistAuth(ctx))
+
+}).prefix('/nutritionist-schedules').use(middleware.auth())
+
+
