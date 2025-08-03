@@ -105,18 +105,18 @@ router.delete('/addresses/:id', async (ctx) => addresses.destroy(ctx)).use(middl
 
 router
   .group(() => {
-   
-    router.get('/',  async (ctx) => exercise.index(ctx)).use(middleware.checkPermission(['view_exercises']))
-    router.get('/:id',async (ctx) => exercise.show(ctx) ).use(middleware.checkPermission(['view_exercises']))
-    router.post('/',async (ctx) => exercise.store(ctx) ).use(middleware.checkPermission(['manage_exercises']))
-   router.put('/:id',async (ctx) => exercise.update(ctx) ).use(middleware.checkPermission(['manage_exercises']))
-     router.delete('/:id',async (ctx) => exercise.destroy(ctx)).use(middleware.checkPermission(['manage_exercises']))
+
+    router.get('/', async (ctx) => exercise.index(ctx)).use(middleware.checkPermission(['view_exercises']))
+    router.get('/:id', async (ctx) => exercise.show(ctx)).use(middleware.checkPermission(['view_exercises']))
+    router.post('/', async (ctx) => exercise.store(ctx)).use(middleware.checkPermission(['manage_exercises']))
+    router.put('/:id', async (ctx) => exercise.update(ctx)).use(middleware.checkPermission(['manage_exercises']))
+    router.delete('/:id', async (ctx) => exercise.destroy(ctx)).use(middleware.checkPermission(['manage_exercises']))
   })
   .prefix('/exercises')
   .use(middleware.auth())
 
 
-  
+
 
 
 router.group(() => {
@@ -124,8 +124,8 @@ router.group(() => {
   router.get('/:id', [RoutinesController, 'show']).use(middleware.checkPermission(['view_routines']))
   router.post('/', [RoutinesController, 'store']).use(middleware.checkPermission(['manage_routines']))
   router.put('/:id', [RoutinesController, 'update']).use(middleware.checkPermission(['manage_routines']))
-  router.delete('/:id', [RoutinesController, 'destroy']).use(middleware.checkPermission(['manage_routines']))  
-}).prefix('/routines')  .use(middleware.auth())
+  router.delete('/:id', [RoutinesController, 'destroy']).use(middleware.checkPermission(['manage_routines']))
+}).prefix('/routines').use(middleware.auth())
 
 
 
@@ -148,3 +148,80 @@ router.group(() => {
   router.get('/routines/:id/exercises', async (ctx) => routineExercises.index(ctx)).use(middleware.checkPermission(['view_routines']))
   router.delete('/routine-exercises/:id', async (ctx) => routineExercises.destroy(ctx)).use(middleware.checkPermission(['manage_routines']))
 }).use(middleware.auth())
+
+
+
+import FoodsController from '#controllers/foods_controller'
+
+
+const foodsController = new FoodsController()
+
+router.group(() => {
+  router.get('/', async (ctx) => foodsController.index(ctx))
+    .use(middleware.checkPermission(['view_foods']))
+
+  router.get('/:id', async (ctx) => foodsController.show(ctx))
+    .use(middleware.checkPermission(['view_foods']))
+
+  router.post('/', async (ctx) => foodsController.store(ctx))
+    .use(middleware.checkPermission(['manage_foods']))
+
+  router.put('/:id', async (ctx) => foodsController.update(ctx))
+    .use(middleware.checkPermission(['manage_foods']))
+
+  router.delete('/:id', async (ctx) => foodsController.destroy(ctx))
+    .use(middleware.checkPermission(['manage_foods']))
+})
+  .prefix('/foods')
+  .use(middleware.auth())
+
+
+  
+
+router.group(() => {
+  router.get('/diets', '#controllers/diets_controller.index').use(middleware.auth()).use(middleware.checkPermission(['view_diets']))
+  router.post('/diets', '#controllers/diets_controller.store').use(middleware.auth()).use(middleware.checkPermission(['manage_diets']))
+  router.put('/diets/:id', '#controllers/diets_controller.update').use(middleware.auth()).use(middleware.checkPermission(['manage_diets']))
+  router.get('/diets/:id', '#controllers/diets_controller.show').use(middleware.auth()).use(middleware.checkPermission(['view_diets']))
+  router.delete('/diets/:id', '#controllers/diets_controller.destroy').use(middleware.auth()).use(middleware.checkPermission(['manage_diets']))
+  router.get('/user_diet', '#controllers/diets_controller.myDiets').use(middleware.auth())
+})
+
+
+import UserDietsController from '#controllers/user_diets_controller'
+
+const userDiets = new UserDietsController()
+
+router
+  .group(() => {
+    router.post('/user_diet', (ctx) => userDiets.store(ctx))
+      .use(middleware.checkPermission(['manage_user_diets']))
+
+    router.put('/user_diet/:id', (ctx) => userDiets.update(ctx))
+      .use(middleware.checkPermission(['manage_user_diets']))
+
+    router.delete('/user_diet/:id', (ctx) => userDiets.destroy(ctx))
+      .use(middleware.checkPermission(['manage_user_diets']))
+  })
+  .use(middleware.auth())
+
+  // start/routes.ts
+
+import DietFoodsController from '#controllers/diet_foods_controller'
+
+
+const dietFoods = new DietFoodsController()
+
+router.group(() => {
+  router
+    .post('/diets/:diet_id/foods', async (ctx) => dietFoods.store(ctx))
+    .use([middleware.auth(), middleware.checkPermission(['manage_diets'])])
+
+  router
+    .get('/diets/:diet_id/foods', async (ctx) => dietFoods.index(ctx))
+    .use([middleware.auth(), middleware.checkPermission(['view_diets'])])
+
+  router
+    .delete('/diets/:diet_id/foods/:diet_food_id', async (ctx) => dietFoods.destroy(ctx))
+    .use([middleware.auth(), middleware.checkPermission(['manage_diets'])])
+})
