@@ -6,7 +6,7 @@ import User from '#models/user'
 import Diet from '#models/diet'
 
 export default class UserDiet extends BaseModel {
-  static table = 'user_diet'      // Tu tabla real
+  static table = 'user_diet'      
 
   @column({ isPrimary: true })
   declare id: number

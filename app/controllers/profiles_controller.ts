@@ -1,6 +1,8 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Profile from '#models/profile'
 import { DateTime } from 'luxon'
+import User from '#models/user'
+import Role from '#models/role'
 
 export default class ProfilesController {
   // Crear perfil
@@ -193,5 +195,81 @@ export default class ProfilesController {
       },
       msg: 'Perfil eliminado correctamente.'
     })
+  }
+  
+ public async index({ auth, response }: HttpContext) {
+    try {
+      // Autenticar usuario
+      const authUser = await auth.authenticate()
+      
+      // Cargar rol del usuario autenticado
+      const userWithRole = await User.query()
+        .where('id', authUser.id)
+        .preload('role')
+        .firstOrFail()
+      
+      const roleId = userWithRole.role.id
+      
+      let profilesQuery = Profile.query()
+        .preload('user', (query) => {
+          query.preload('role')
+        })
+
+      if (roleId === 1) {
+        // admin: trae todos
+        // profilesQuery ya sin filtro
+      } else if (roleId === 2) {
+        // manager: todos excepto admin y manager
+        profilesQuery = profilesQuery.whereHas('user', (query) => {
+          query.whereNotIn('role_id', [1, 2])
+        })
+      } else if ([3, 6, 4].includes(roleId)) {
+        // trainer, nutritionist, receptionist: solo usuarios normales (role_id = 5)
+        profilesQuery = profilesQuery.whereHas('user', (query) => {
+          query.where('role_id', 5)
+        })
+      } else {
+        // Otros roles: sin acceso
+        return response.forbidden({
+          status: 'error',
+          data: {},
+          msg: 'No tiene permiso para acceder a esta lista de perfiles.',
+        })
+      }
+      
+      const profiles = await profilesQuery.exec()
+
+      if (profiles.length === 0) {
+        return response.notFound({
+          status: 'error',
+          data: {},
+          msg: 'No se encontraron perfiles para mostrar.',
+        })
+      }
+
+      // Mapear para respuesta (opcional)
+      const data = profiles.map(profile => ({
+        user_id: profile.userId,
+        full_name: profile.fullName,
+        phone: profile.phone,
+        birth_date: profile.birthDate?.toISODate(),
+        gender: profile.gender,
+        photo_url: profile.photoUrl,
+      }))
+
+      return response.ok({
+        status: 'success',
+        data,
+        msg: 'Perfiles obtenidos correctamente.',
+      })
+      
+    } catch (error) {
+      console.error('Error al obtener perfiles:', error)
+      return response.status(500).json({
+        status: 'error',
+        data: {},
+        msg: 'Error inesperado del servidor',
+      })
+    }
   }
 }

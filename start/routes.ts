@@ -49,7 +49,7 @@ router.delete('/users/:id', async (ctx) => usersController.destroy(ctx)).use(mid
 // -------------------------
 // Perfiles
 // -------------------------
-
+router.get('/users/profile/peruser', async (ctx) => profilesController.index(ctx))
 // Crear perfil
 router.post('/users/profile', async (ctx) => profilesController.store(ctx)).use(middleware.auth()).use(middleware.checkPermission(['edit_profile']))
 
@@ -231,6 +231,7 @@ router.group(() => {
 import TrainerSchedulesController from '#controllers/trainer_schedules_controller'
 import NutritionistSchedulesController from '#controllers/nutritionist_schedules_controller'
 import ScheduleController from '#controllers/schedules_controller'
+import StaffController from '#controllers/staff_controller'
 
 
 const controller = new TrainerSchedulesController()
@@ -262,46 +263,51 @@ router.group(() => {
 
 const nutritionistSchedulesController = new NutritionistSchedulesController()
 
+
+
 router.group(() => {
   router.post('/', (ctx) => nutritionistSchedulesController.store(ctx))
-   
+    .use(middleware.checkPermission(['create_nutritionist_schedules']))
 
   router.get('/', (ctx) => nutritionistSchedulesController.index(ctx))
-   
+    .use(middleware.checkPermission(['view_nutritionist_schedules']))
 
   router.get('/:id', (ctx) => nutritionistSchedulesController.show(ctx))
-
+    .use(middleware.checkPermission(['view_nutritionist_schedules']))
 
   router.put('/:id', (ctx) => nutritionistSchedulesController.update(ctx))
-   
+    .use(middleware.checkPermission(['update_nutritionist_schedules']))
 
   router.delete('/:id', (ctx) => nutritionistSchedulesController.destroy(ctx))
-   
+    .use(middleware.checkPermission(['delete_nutritionist_schedules']))
 
   router.get('/user/token', (ctx) => nutritionistSchedulesController.indexByUserAuth(ctx))
-   
+    
 
   router.get('/nutritionist/token', (ctx) => nutritionistSchedulesController.indexByNutritionistAuth(ctx))
-
+    
 }).prefix('/nutritionist-schedules').use(middleware.auth())
-
 
 
 const scheduleController = new ScheduleController()
 
 router.group(() => {
   router.post('/', (ctx) => scheduleController.store(ctx))
-  
+    .use(middleware.checkPermission(['create_schedules']))
 
   router.get('/', (ctx) => scheduleController.index(ctx))
-   
+    .use(middleware.checkPermission(['view_schedules']))
 
   router.get('/:id', (ctx) => scheduleController.show(ctx))
-    
+    .use(middleware.checkPermission(['view_schedules']))
 
   router.put('/:id', (ctx) => scheduleController.update(ctx))
-
+    .use(middleware.checkPermission(['update_schedules']))
 
   router.delete('/:id', (ctx) => scheduleController.destroy(ctx))
-
+    .use(middleware.checkPermission(['delete_schedules']))
 }).prefix('/schedules').use(middleware.auth())
+
+const staffController = new StaffController()
+
+router.get('/available-staff',  (ctx) => staffController.getAvailable(ctx)).use(middleware.auth())

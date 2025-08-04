@@ -12,7 +12,7 @@ export default class CheckPermissionMiddleware {
     const user = auth.user as User
 
     await user.preload('role', (roleQuery) => {
-      roleQuery.preload('permissions')
+      roleQuery.preload('permission')
     })
 
     const rolePermissions = user.role.permissions.map((p) => p.name)
