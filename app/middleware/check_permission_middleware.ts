@@ -15,7 +15,7 @@ export default class CheckPermissionMiddleware {
       roleQuery.preload('permission')
     })
 
-    const rolePermissions = user.role.permissions.map((p) => p.name)
+    const rolePermissions = user.role.permission.map((p) => p.name)
 
     if (!rolePermissions.includes(requiredPermission)) {
       return response.unauthorized({
