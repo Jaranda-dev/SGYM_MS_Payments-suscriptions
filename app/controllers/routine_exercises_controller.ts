@@ -78,17 +78,11 @@ public async store({ request, response }: HttpContext) {
         .where('routine_id', routineId)
         .preload('exercise')
 
-      const data = relations.map((rel) => ({
-        exercise_id: rel.exerciseId,
-        name: rel.exercise.name,
-        description: rel.exercise.description,
-        equipment_type: rel.exercise.equipmentType,
-        video_url: rel.exercise.videoUrl,
-      }))
+    
 
       return response.status(200).json({
         status: 'success',
-        data,
+        data:relations,
         msg: 'Ejercicios de la rutina obtenidos correctamente.'
       })
     } catch (error) {

@@ -37,7 +37,7 @@ export default class ExercisesController {
     const schema = vine.object({
       name: vine.string().minLength(3),
       description: vine.string().minLength(5),
-      equipment_type: vine.enum(['machine', 'bodyweight', 'other']),
+      equipment_type: vine.enum(['machine', 'dumbbell', 'other']),
       video_url: vine.string().url().optional(),
     })
 
@@ -65,7 +65,7 @@ export default class ExercisesController {
     const schema = vine.object({
       name: vine.string().minLength(3).optional(),
       description: vine.string().minLength(5).optional(),
-      equipment_type: vine.enum(['machine', 'bodyweight', 'other']).optional(),
+      equipment_type: vine.enum(['machine', 'dumbbell', 'other']).optional(),
       video_url: vine.string().url().optional(),
     })
 
