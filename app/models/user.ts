@@ -33,6 +33,8 @@ export default class User extends compose(BaseModel, AuthFinder) {
 
   @column.dateTime({ autoCreate: true })
   declare lastAccess: DateTime
+  @column()
+  declare fcm: string | null
 
   static refreshTokens = DbAccessTokensProvider.forModel(User, {
     prefix: 'rt_',

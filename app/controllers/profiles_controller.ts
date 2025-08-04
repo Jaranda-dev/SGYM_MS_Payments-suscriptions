@@ -2,7 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import Profile from '#models/profile'
 import { DateTime } from 'luxon'
 import User from '#models/user'
-import Role from '#models/role'
+
 
 export default class ProfilesController {
   // Crear perfil
