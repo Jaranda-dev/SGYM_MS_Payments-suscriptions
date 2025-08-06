@@ -6,7 +6,7 @@ import hash from '@adonisjs/core/services/hash'
 import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
 import Role from './role.js'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
-import UserDiet from './user_diet.js'
+
 
 const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
   uids: ['email'],
@@ -33,8 +33,6 @@ export default class User extends compose(BaseModel, AuthFinder) {
 
   @column.dateTime({ autoCreate: true })
   declare lastAccess: DateTime
-  @column()
-  declare fcm: string | null
 
   static refreshTokens = DbAccessTokensProvider.forModel(User, {
     prefix: 'rt_',
@@ -46,7 +44,6 @@ export default class User extends compose(BaseModel, AuthFinder) {
 @belongsTo(() => Role)
 public role!: BelongsTo<typeof Role>
 
-@hasMany(() => UserDiet)
-declare userDiets: HasMany<typeof UserDiet>
+
 
 }

@@ -2,6 +2,8 @@ import { DateTime } from 'luxon'
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 
 export default class UserQrCode extends BaseModel {
+
+
   static table = 'user_qr_code'
 
   @column({ isPrimary: true })

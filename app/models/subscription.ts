@@ -1,35 +1,22 @@
+import { BaseModel, column, belongsTo } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
-import { BaseModel, column } from '@adonisjs/lucid/orm'
+import type { BelongsTo } from '@adonisjs/lucid/types/relations'
+import User from './user.js'
+import Membership from './membership.js'
 
 export default class Subscription extends BaseModel {
-   static table = 'subscription'
-  @column({ isPrimary: true })
-  declare id: number
+  static table = 'subscription'
 
-  @column()
-  declare userId: number
+  @column({ isPrimary: true }) declare id: number
+  @column() declare userId: number
+  @column() declare membershipId: number
+  @column.dateTime() declare startDate: DateTime
+  @column.dateTime() declare endDate: DateTime
+  @column() declare status: 'active' | 'cancelled' | 'expired'
 
-  @column()
-  declare membershipId: number
+  @belongsTo(() => User) declare user: BelongsTo<typeof User>
+  @belongsTo(() => Membership) declare membership: BelongsTo<typeof Membership>
 
-  @column.date()
-  declare startDate: DateTime
-
-  @column.date()
-  declare endDate: DateTime
-
-  @column()
-  declare status: 'active' | 'expired' | 'canceled'
-
-  @column()
-  declare isRenewable: boolean
-
-  @column.date()
-  declare canceledAt: DateTime | null
-
-  @column.dateTime({ autoCreate: true })
-  declare createdAt: DateTime
-
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
-  declare updatedAt: DateTime
+  @column.dateTime({ autoCreate: true }) declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true }) declare updatedAt: DateTime
 }
