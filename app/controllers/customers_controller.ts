@@ -11,7 +11,7 @@ export default class CustomersController {
      * @param {string} name - The name of the customer.
      * @returns {Promise<any>} - The created customer object.
      */
-    public static async create({ request }: HttpContext) {
+     async create({ request }: HttpContext) {
         const email = request.input('email')
         const name = request.input('name')
         const user_id = request.input('user_id')
@@ -29,7 +29,7 @@ export default class CustomersController {
      * @param {number} user_id - The user ID associated with the customer.
      * @returns {Promise<any>} - The customer object if found, otherwise null.
      */
-    public static async retrieveByUserId({ request }: HttpContext) {
+     async retrieveByUserId({ request }: HttpContext) {
         const user_id = request.input('user_id')
 
         if (!user_id) {
@@ -39,17 +39,17 @@ export default class CustomersController {
         return await StripeService.retrieveCustomerByUserId(user_id)
     }
 
-    public static async addPaymentMethod({ request }: HttpContext) {
+     async addPaymentMethod({ request }: HttpContext) {
         const { customerId, paymentMethodId } = request.only(['customerId', 'paymentMethodId'])
         await StripeService.addPaymentMethod(customerId, paymentMethodId)
         return { success: true }
     }
 
-    public static async renderAddPaymentMethodForm({ view }: HttpContext) {
+     async renderAddPaymentMethodForm({ view }: HttpContext) {
         return view.render('addpayment_method')
     }
 
-    public static async setupIntent({ response }: HttpContext) {
+     async setupIntent({ response }: HttpContext) {
         const setupIntent = await StripeService.SetupIntent()
         console.log('Setup Intent:', setupIntent)
         return response.json({ client_secret: setupIntent.client_secret })
