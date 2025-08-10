@@ -6,9 +6,9 @@ export const storeSubscriptionValidator = vine.compile(
     membershipId: vine.number(),
     startDate: vine.date(),
     endDate: vine.date(),
-    status: vine.enum(['active', 'cancelled', 'expired'])
+    status: vine.enum(['active', 'cancelled', 'expired']),
+    isRenewable: vine.boolean().optional(),
   })
-
 )
 
 export const updateSubscriptionValidator = vine.compile(
@@ -17,11 +17,7 @@ export const updateSubscriptionValidator = vine.compile(
     membershipId: vine.number().optional(),
     startDate: vine.date().optional(),
     endDate: vine.date().optional(),
-    status: vine.enum(['active', 'cancelled', 'expired']).optional()
+    status: vine.enum(['active', 'cancelled', 'expired']).optional(),
+    isRenewable: vine.boolean().optional(),
   })
-
 )
-
-
-
-

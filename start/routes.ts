@@ -8,6 +8,7 @@ import PaymentsController from '#controllers/payments_controller'
 import PromotionsController from '#controllers/promotions_controller'
 import UserPaymentMethodsController from '#controllers/user_payment_methods_controller'
 import UserPromotionsController from '#controllers/user_promotions_controller'
+import { middleware } from './kernel.js'
 
 router.group(() => {
   router.get('/', [MembershipsController, 'index'])
@@ -22,11 +23,10 @@ router.group(() => {
 
 router.group(() => {
   router.post('/add-payment-method', [CustomersController, 'addPaymentMethod'])
-  router.get('/add-payment-method', [CustomersController, 'renderAddPaymentMethodForm'])
   router.post('/setup-intent', [CustomersController, 'setupIntent'])
   router.post('/', [CustomersController, 'create'])
   router.get('/retrieve-by-user-id', [CustomersController, 'retrieveByUserId'])
-}).prefix('/customers')
+}).prefix('/payment-gateway').use(middleware.auth())
 
 router.group(() => {
   router.get('/', [PaymentMethodsController, 'index'])
@@ -42,7 +42,8 @@ router.group(() => {
   router.get('/:id', [SubscriptionsController, 'show'])
   router.put('/:id', [SubscriptionsController, 'update'])
   router.delete('/:id', [SubscriptionsController, 'destroy'])
-}).prefix('/subscriptions')
+  router.get('/user/subscriptions', [SubscriptionsController, 'getByUser'])
+}).prefix('/subscriptions').use(middleware.auth())
 
 router.group(() => {
   router.get('/', [PaymentRequestsController, 'index'])
@@ -58,8 +59,9 @@ router.group(() => {
   router.post('/', [PaymentsController, 'store'])
   router.get('/:id', [PaymentsController, 'show'])
   router.put('/:id', [PaymentsController, 'update'])
-  router.delete('/:id', [PaymentsController, 'destroy'])
-}).prefix('/payments')
+  router.delete('/:id', [PaymentsController, 'destroy']),
+  router.get('/user/payments', [PaymentsController, 'getPaymentsByUser'])
+}).prefix('/payments').use(middleware.auth())
 
 router.group(() => {
   router.get('/', [PromotionsController, 'index'])
@@ -75,7 +77,9 @@ router.group(() => {
   router.get('/:id', [UserPaymentMethodsController, 'show'])
   router.put('/:id', [UserPaymentMethodsController, 'update'])
   router.delete('/:id', [UserPaymentMethodsController, 'destroy'])
-}).prefix('/user-payment-methods')
+  router.post('/createby/payment-method-id', [UserPaymentMethodsController, 'storeByPaymentMethodId'])
+  router.get('/user/methods', [UserPaymentMethodsController, 'getByUser'])
+}).prefix('/user-payment-methods').use(middleware.auth())
 
 router.group(() => {
   router.get('/', [UserPromotionsController, 'index'])

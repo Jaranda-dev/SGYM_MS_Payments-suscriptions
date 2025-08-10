@@ -1,3 +1,5 @@
+import Profile from '#models/profile'
+import User from '#models/user'
 import env from '#start/env'
 import Stripe from 'stripe'
 
@@ -13,28 +15,57 @@ const stripe = new Stripe(stripeSecretKey, {
 
 export default class StripeService {
 
-  public static async SetupIntent() {
+  public static async SetupIntent( payment_method_types: string[], customerId: string , user_id: string) {
     return await stripe.setupIntents.create({
-      payment_method_types: ['card'],
-      customer: 'cus_So4hZgUVCnFPT7', // Reemplaza con el ID del cliente real
-      metadata: { user_id: '1' }, // Reemplaza con el ID de usuario real
+      payment_method_types,
+      customer: customerId,
+      metadata: { user_id },
     })
   }
 
- public static async createCustomer(email: string, name: string, id: number) {
-  return await stripe.customers.create({
-    email,
-    name,
-    metadata: { user_id: id.toString() },
-  })
-}
+  public static async createCustomer(email: string, name: string, id: number) {
+    return await stripe.customers.create({
+      email,
+      name,
+      metadata: { user_id: id.toString() },
+    })
+  }
 
 public static async retrieveCustomerByUserId(user_id: number) {
+  
+  
   const customers = await stripe.customers.list({ limit: 100 })
-  return customers.data.find(
+
+ 
+  let customer = customers.data.find(
     (customer) => customer.metadata?.user_id === user_id.toString()
   )
+
+  // Si no existe, lo creamos
+  if (!customer) {
+    const user = await User.findBy('id', user_id)
+    if (!user) {
+      throw new Error('Usuario no encontrado.')
+    }
+
+    const userProfile = await Profile.findBy('user_id', user_id)
+
+    if (!userProfile) {
+      throw new Error('Perfil de usuario no encontrado.')
+    }
+
+    customer = await stripe.customers.create({
+      email: user.email,
+      name: userProfile.fullName,
+      metadata: {
+        user_id: user_id.toString(),
+      },
+    })
+  }
+
+  return customer
 }
+
 
   public static async addPaymentMethod(customerId: string, paymentMethodId: string) {
     await stripe.paymentMethods.attach(paymentMethodId, { customer: customerId })
@@ -68,6 +99,10 @@ public static async retrieveCustomerByUserId(user_id: number) {
       success_url: successUrl,
       cancel_url: cancelUrl,
     })
+  }
+
+  public static async retrieveMethod(paymentMethodId: string) {
+    return await stripe.paymentMethods.retrieve(paymentMethodId)
   }
 
 }

@@ -11,6 +11,7 @@ export default class SubscriptionsController{
       const { startDate, endDate, ...rest } = data
       const subscription = await Subscription.create({
         ...rest,
+        status: rest.status === 'cancelled' ? 'canceled' : rest.status,
         startDate: DateTime.fromJSDate(startDate),
         endDate: DateTime.fromJSDate(endDate),
       })
@@ -88,14 +89,16 @@ export default class SubscriptionsController{
         })
       }
 
-      // Convert startDate and endDate from JS Date to Luxon DateTime if present
-      const { startDate, endDate, ...rest } = data
-      subscription.merge({
-        ...rest,
-        ...(startDate && { startDate: DateTime.fromJSDate(startDate) }),
-        ...(endDate && { endDate: DateTime.fromJSDate(endDate) }),
-      })
-      await subscription.save()
+    // Convert startDate and endDate from JS Date to Luxon DateTime if present
+    const { startDate, endDate, status, ...rest } = data
+    const updateData: any = {
+      ...rest,
+      ...(typeof status !== 'undefined' ? { status: status === 'cancelled' ? 'canceled' : status } : {}),
+      ...(typeof startDate !== 'undefined' ? { startDate: DateTime.fromJSDate(startDate) } : {}),
+      ...(typeof endDate !== 'undefined' ? { endDate: DateTime.fromJSDate(endDate) } : {}),
+    }
+    subscription.merge(updateData)
+    await subscription.save()
 
       return response.ok({
         status: 'success',
@@ -135,6 +138,34 @@ export default class SubscriptionsController{
       return response.internalServerError({
         status: 'error',
         msg: 'Error al eliminar la suscripción.',
+        data: error.messages || error,
+      })
+    }
+  }
+
+  // Obtener suscripciones por usuario
+  async getByUser({ auth, response }: HttpContext) {
+    try {
+      const user = auth.user
+      if (!user) {
+        return response.unauthorized({
+          status: 'error',
+          msg: 'Usuario no autenticado.',
+          data: [],
+        })
+      }
+
+      const subscriptions = await Subscription.query().where('userId', user.id).preload('membership')
+
+      return response.ok({
+        status: 'success',
+        data: subscriptions,
+        msg: 'Suscripciones del usuario obtenidas exitosamente.',
+      })
+    } catch (error) {
+      return response.internalServerError({
+        status: 'error',
+        msg: 'Error al obtener las suscripciones del usuario.',
         data: error.messages || error,
       })
     }

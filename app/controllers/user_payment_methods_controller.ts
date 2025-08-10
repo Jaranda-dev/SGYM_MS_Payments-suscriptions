@@ -1,6 +1,8 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import UserPaymentMethod from '#models/user_payment_method'
 import { storeUserPaymentMethodValidator, updateUserPaymentMethodValidator } from '#validators/UserPaymentMethod'
+import User from '#models/user'
+import StripeService from '#services/stripe_service'
 
 export default class UserPaymentMethodsController {
   // Crear membresía
@@ -127,4 +129,76 @@ export default class UserPaymentMethodsController {
       })
     }
   }
+
+
+   async storeByPaymentMethodId({ request, response ,auth }: HttpContext) {
+    try {
+      const {payment_method_id} = request.body()
+      if (!payment_method_id) {
+        return response.badRequest({
+          status: 'error',
+          msg: 'El ID del método de pago es requerido.',
+        })
+      }
+      console.log(auth.user)
+      const user = await User.findBy('id', auth.user!.id)
+      if (!user) {
+        return response.notFound({
+          status: 'error',
+          msg: 'Usuario no encontrado.',
+        })
+      }
+      const data = await StripeService.retrieveMethod(payment_method_id)
+
+      const userPaymentMethod = await UserPaymentMethod.create({
+        userId: user.id,
+        paymentMethodId: payment_method_id, 
+        customerId: data.customer as string,
+        brand: data.card?.brand || '',
+        last4: data.card?.last4 || '',
+        expMonth: data.card?.exp_month.toString() || '',
+        expYear: data.card?.exp_year || 0,
+        isDefault: false,
+      })
+
+      return response.created({
+        status: 'success',
+        data: userPaymentMethod,
+        msg: 'método de pago creado exitosamente.',
+      })
+    } catch (error) {
+      console.log(error)
+      return response.badRequest({
+        status: 'error',
+        msg: 'Error al crear el método de pago.',
+        data: error.messages || error,
+      })
+    }
+  }
+
+  async getByUser({ response, auth }: HttpContext) {
+    try {
+      const user = await User.findBy('id', auth.user!.id)
+      if (!user) {
+        return response.notFound({
+          status: 'error',
+          msg: 'Usuario no encontrado.',
+        })
+      }
+      const userPaymentMethods = await UserPaymentMethod.query().where('user_id', user.id)
+      return response.ok({
+        status: 'success',
+        data: userPaymentMethods,
+        msg: 'Lista de métodos de pago obtenida exitosamente.',
+      })
+    } catch (error) {
+      return response.internalServerError({
+        status: 'error',
+        msg: 'Error al obtener los métodos de pago.',
+        data: error.messages || error,
+      })
+    }
+
+  }
 }
+

@@ -45,14 +45,37 @@ export default class CustomersController {
         return { success: true }
     }
 
-     async renderAddPaymentMethodForm({ view }: HttpContext) {
-        return view.render('addpayment_method')
-    }
+     async setupIntent({ response  ,auth}: HttpContext) {
+        try {
+            const user = auth.user
+            if (!user) {
+                return response.unauthorized({
+                    status: 'error',
+                    msg: 'User not authenticated.',
+                })
+            }
+            const userCustomer = await StripeService.retrieveCustomerByUserId(user.id)
+            if (!userCustomer) {
+                return response.notFound({
+                    status: 'error',
+                    msg: 'Customer not found for the authenticated user.',
+                })
+            }
 
-     async setupIntent({ response }: HttpContext) {
-        const setupIntent = await StripeService.SetupIntent()
-        console.log('Setup Intent:', setupIntent)
-        return response.json({ client_secret: setupIntent.client_secret })
-    }
-   
+            const setupIntent = await StripeService.SetupIntent(['card'], userCustomer.id, String(user.id))
+            return response.ok({
+                status: 'success',
+                data: { client_secret: setupIntent.client_secret },
+            msg: 'Setup intent created successfully.',
+          })
+        }
+        catch (error) {
+          return response.internalServerError({
+            status: 'error',
+            msg: 'Error creating setup intent.',
+            data: error.message || error,
+          })
+        }
+      }
+
 }

@@ -2,27 +2,22 @@ import vine from '@vinejs/vine'
 
 export const storePaymentValidator = vine.compile(
   vine.object({
-    userId: vine.number(),
     paymentRequestId: vine.number(),
-    paymentMethodId: vine.number(),
+    subscriptionId: vine.number(),
     amount: vine.number(),
-    status: vine.enum(['success', 'failed'])
+    paymentDate: vine.date(),
+    concept: vine.string().maxLength(200).optional(),
+    status: vine.enum(['pending', 'processing', 'success', 'failed', 'canceled']),
   })
-
 )
 
 export const updatePaymentValidator = vine.compile(
   vine.object({
-    userId: vine.number().optional(),
     paymentRequestId: vine.number().optional(),
-    paymentMethodId: vine.number().optional(),
+    subscriptionId: vine.number().optional(),
     amount: vine.number().optional(),
-    status: vine.enum(['success', 'failed']).optional()
+    paymentDate: vine.date().optional(),
+    concept: vine.string().maxLength(200).optional(),
+    status: vine.enum(['pending', 'processing', 'success', 'failed', 'canceled']).optional(),
   })
-
 )
-
-
-
-
-

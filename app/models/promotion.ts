@@ -1,6 +1,6 @@
-import { BaseModel, column, hasMany } from '@adonisjs/lucid/orm'
-import { DateTime } from 'luxon'
-import type { HasMany } from '@adonisjs/lucid/types/relations'
+import { BaseModel, column, belongsTo, hasMany } from '@adonisjs/lucid/orm'
+import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
+import Membership from './membership.js'
 import UserPromotion from './user_promotion.js'
 
 export default class Promotion extends BaseModel {
@@ -9,11 +9,8 @@ export default class Promotion extends BaseModel {
   @column({ isPrimary: true }) declare id: number
   @column() declare name: string
   @column() declare discount: number
-  @column() declare startDate: DateTime
-  @column() declare endDate: DateTime
+  @column({ columnName: 'membership_id' }) declare membershipId: number
 
+  @belongsTo(() => Membership) declare membership: BelongsTo<typeof Membership>
   @hasMany(() => UserPromotion) declare userPromotions: HasMany<typeof UserPromotion>
-
-  @column.dateTime({ autoCreate: true }) declare createdAt: DateTime
-  @column.dateTime({ autoCreate: true, autoUpdate: true }) declare updatedAt: DateTime
 }

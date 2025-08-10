@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Payment from '#models/payment'
 import { storePaymentValidator , updatePaymentValidator } from '#validators/Payment'
+
 export default class PaymentsController {
   // Crear membresía
   async store({ request, response }: HttpContext) {
@@ -126,4 +127,43 @@ export default class PaymentsController {
       })
     }
   }
+
+ // Obtener pagos por usuario autenticado con relaciones
+async getPaymentsByUser({ auth, response }: HttpContext) {
+  console.log('getPaymentsByUser called')
+  const userId = auth.user?.id
+
+  if (!userId) {
+    return response.unauthorized({
+      status: 'error',
+      msg: 'Usuario no autenticado.',
+    })
+  }
+
+  try {
+    const payments = await Payment.query()
+      .whereHas('subscription', (query) => {
+        query.where('user_id', userId)
+      })
+      .preload('subscription', (subscriptionQuery) => {
+        subscriptionQuery.preload('membership')
+      })
+
+    return response.ok({
+      status: 'success',
+      data: payments,
+      msg: payments.length > 0
+        ? 'Pagos obtenidos exitosamente.'
+        : 'No se encontraron pagos para este usuario.',
+    })
+  } catch (error) {
+    return response.internalServerError({
+      status: 'error',
+      msg: 'Error al obtener los pagos del usuario.',
+      data: error.messages || error.message || error,
+    })
+  }
+}
+
+
 }

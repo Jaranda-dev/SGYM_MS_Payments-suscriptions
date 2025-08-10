@@ -4,23 +4,14 @@ export const storePromotionValidator = vine.compile(
   vine.object({
     name: vine.string().trim().minLength(3),
     discount: vine.number().min(0),
-    startDate: vine.date(),
-    endDate: vine.date()
+    membershipId: vine.number(),
   })
-
 )
 
 export const updatePromotionValidator = vine.compile(
   vine.object({
     name: vine.string().trim().minLength(3).optional(),
     discount: vine.number().min(0).optional(),
-    startDate: vine.date().optional(),
-    endDate: vine.date().optional()
+    membershipId: vine.number().optional(),
   })
-
 )
-
-
-
-
-
