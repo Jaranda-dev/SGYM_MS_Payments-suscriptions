@@ -48,6 +48,7 @@ export default class CustomersController {
      async setupIntent({ response  ,auth}: HttpContext) {
         try {
             const user = auth.user
+           
             if (!user) {
                 return response.unauthorized({
                     status: 'error',
@@ -70,6 +71,7 @@ export default class CustomersController {
           })
         }
         catch (error) {
+            console.error('Error creating setup intent:', error)
           return response.internalServerError({
             status: 'error',
             msg: 'Error creating setup intent.',

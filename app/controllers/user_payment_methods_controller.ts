@@ -127,7 +127,7 @@ await UserPaymentMethod.query()
         })
       }
 
-      await userPaymentMethod.delete()
+      await userPaymentMethod.softDelete()
 
       return response.ok({
         status: 'success',

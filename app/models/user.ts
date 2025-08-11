@@ -15,6 +15,7 @@ import UserPaymentMethod from './user_payment_method.js'
 import PaymentRequest from './payment_request.js'
 
 import Otp from './otp.js'
+import SoftDelete from './Traits/soft_delete.js'
 
 
 const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
@@ -22,7 +23,7 @@ const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
   passwordColumnName: 'password',
 })
 
-export default class User extends compose(BaseModel, AuthFinder) {
+export default class User extends compose(SoftDelete(BaseModel), AuthFinder) {
   static table = 'user'
 
   @column({ isPrimary: true }) declare id: number

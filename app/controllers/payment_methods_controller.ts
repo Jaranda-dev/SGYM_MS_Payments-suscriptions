@@ -112,7 +112,7 @@ export default class PaymentMethodsController{
         })
       }
 
-      await paymentMethod.delete()
+      await paymentMethod.softDelete()
 
       return response.ok({
         status: 'success',

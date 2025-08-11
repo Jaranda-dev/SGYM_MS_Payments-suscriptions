@@ -2,8 +2,9 @@ import { BaseModel, column, hasMany } from '@adonisjs/lucid/orm'
 import type { HasMany } from '@adonisjs/lucid/types/relations'
 import PaymentRequest from './payment_request.js'
 import UserPaymentMethod from './user_payment_method.js'
+import SoftDelete from './Traits/soft_delete.js'
 
-export default class PaymentMethod extends BaseModel {
+export default class PaymentMethod extends SoftDelete(BaseModel) {
   static table = 'payment_method'
 
   @column({ isPrimary: true }) declare id: number

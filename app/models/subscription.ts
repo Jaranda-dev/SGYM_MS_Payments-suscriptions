@@ -4,8 +4,9 @@ import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import User from './user.js'
 import Membership from './membership.js'
 import Payment from './payment.js'
+import SoftDelete from './Traits/soft_delete.js'
 
-export default class Subscription extends BaseModel {
+export default class Subscription extends SoftDelete(BaseModel) {
   static table = 'subscription'
 
   @column({ isPrimary: true }) declare id: number

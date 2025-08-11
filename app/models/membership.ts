@@ -2,8 +2,10 @@ import { BaseModel, column, hasMany } from '@adonisjs/lucid/orm'
 import type { HasMany } from '@adonisjs/lucid/types/relations'
 import Subscription from './subscription.js'
 import Promotion from './promotion.js'
+import SoftDelete from './Traits/soft_delete.js'
 
-export default class Membership extends BaseModel {
+
+export default class Membership extends SoftDelete(BaseModel){
   static table = 'membership'
 
   @column({ isPrimary: true }) declare id: number
@@ -14,4 +16,5 @@ export default class Membership extends BaseModel {
   @column() declare stripeProductId: string
   @hasMany(() => Subscription) declare subscriptions: HasMany<typeof Subscription>
   @hasMany(() => Promotion) declare promotions: HasMany<typeof Promotion>
+  
 }

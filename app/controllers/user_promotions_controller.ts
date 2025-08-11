@@ -111,7 +111,7 @@ export default class UserPromotionsController {
         })
       }
 
-      await userPromotion.delete()
+      await userPromotion.softDelete()
 
       return response.ok({
         status: 'success',

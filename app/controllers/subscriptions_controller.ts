@@ -135,7 +135,7 @@ export default class SubscriptionsController{
         })
       }
 
-      await subscription.delete()
+      await subscription.softDelete()
 
       return response.ok({
         status: 'success',
@@ -203,24 +203,46 @@ async subscribe({ request, response, auth }: HttpContext) {
     const userStripe = await StripeService.retrieveCustomerByUserId(user.id)
 
     // Obtener suscripción Stripe actual (si existe)
-    const stripeSubscription = await StripeService.retrieveSubscriptionByCustomerId(userStripe.id)
+    let stripeSubscription: any = await StripeService.retrieveSubscriptionByCustomerId(userStripe.id)
+    const userSubscription = await Subscription.query().where('userId', user.id).first()
 
     let startDate = DateTime.now()
     let endDate = startDate.plus({ days: membership.durationDays })
 
-    if (stripeSubscription) {
-      // Si hay suscripción activa en Stripe
-      const currentPeriodEnd = DateTime.fromSeconds(
-        (stripeSubscription as any).current_period_end
-      )
-      // Aquí fijamos la fecha de inicio del nuevo plan al final del ciclo actual
+    if (!userSubscription && stripeSubscription) {
+      await StripeService.deleteSubscription(stripeSubscription.id)
+      stripeSubscription = null
+    }
+
+    if (stripeSubscription != null) {
+      const periodEndValue = (stripeSubscription as any)?.current_period_end
+      console.log('Current period end value:', periodEndValue)
+
+      let currentPeriodEnd: DateTime
+
+      if (
+        typeof periodEndValue === 'number' &&
+        !isNaN(periodEndValue) &&
+        periodEndValue > 0
+      ) {
+        currentPeriodEnd = DateTime.fromSeconds(periodEndValue)
+      } else if (
+        typeof periodEndValue === 'string' &&
+        !isNaN(Number(periodEndValue)) &&
+        Number(periodEndValue) > 0
+      ) {
+        currentPeriodEnd = DateTime.fromSeconds(Number(periodEndValue))
+      } else {
+        // Si no hay periodo, usar la fecha actual como fallback
+        currentPeriodEnd = DateTime.now()
+        console.warn('current_period_end no está definido, usando fecha actual como inicio del nuevo periodo.')
+      }
+
       startDate = currentPeriodEnd
       endDate = currentPeriodEnd.plus({ days: membership.durationDays })
 
-      // Actualizar la suscripción en Stripe para cambiar el plan, con billing_cycle_anchor al final del periodo actual
       await StripeService.updateSubscriptionPrice(stripeSubscription, membership)
     } else {
-      // Crear nueva suscripción en Stripe si no existe
       await StripeService.createSubscription(userStripe.id, membership.stripePriceId)
     }
 

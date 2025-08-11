@@ -33,9 +33,10 @@ export default class StripeService {
   }
 
 public static async retrieveCustomerByUserId(user_id: number) {
-  
+  try{
   
   const customers = await stripe.customers.list({ limit: 100 })
+  
 
  
   let customer = customers.data.find(
@@ -44,14 +45,15 @@ public static async retrieveCustomerByUserId(user_id: number) {
 
   // Si no existe, lo creamos
   if (!customer) {
-    const user = await User.findBy('id', user_id)
+       const user = await User.findBy('id', user_id)
     if (!user) {
       throw new Error('Usuario no encontrado.')
     }
 
-    const userProfile = await Profile.findBy('user_id', user_id)
 
-    if (!userProfile) {
+  
+    const userProfile = await Profile.findBy('user_id', user_id)
+ if (!userProfile) {
       throw new Error('Perfil de usuario no encontrado.')
     }
 
@@ -65,6 +67,11 @@ public static async retrieveCustomerByUserId(user_id: number) {
   }
 
   return customer
+  }
+  catch (error) {
+    console.error('Error retrieving customer by user ID:', error)
+    throw new Error('Error retrieving customer.')
+  }
 }
 
 
@@ -180,4 +187,7 @@ public static async updateSubscriptionPrice(
   })
 }
 
+public static async deleteSubscription(subscriptionId: string) {
+  return await stripe.subscriptions.cancel(subscriptionId)
+}
 }

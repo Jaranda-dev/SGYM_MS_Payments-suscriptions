@@ -148,7 +148,7 @@ export default class MembershipsController  {
         })
       }
 
-      await membership.delete()
+      await membership.softDelete()
 
       return response.ok({
         status: 'success',

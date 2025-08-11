@@ -3,8 +3,9 @@ import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import User from './user.js'
 import PaymentMethod from './payment_method.js'
 import { DateTime } from 'luxon'
+import SoftDelete from './Traits/soft_delete.js'
 
-export default class UserPaymentMethod extends BaseModel {
+export default class UserPaymentMethod extends SoftDelete(BaseModel) {
   static table = 'user_payment_method'
 
   @column({ isPrimary: true }) declare id: number
