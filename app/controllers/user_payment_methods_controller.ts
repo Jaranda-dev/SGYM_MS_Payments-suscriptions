@@ -9,8 +9,14 @@ export default class UserPaymentMethodsController {
   async store({ request, response }: HttpContext) {
     try {
       const data = await request.validateUsing(storeUserPaymentMethodValidator)
-      const userPaymentMethod = await UserPaymentMethod.create(data)
+      data.isDefault = true
+      
 
+      const userPaymentMethod = await UserPaymentMethod.create(data)
+await UserPaymentMethod.query()
+          .where('user_id', userPaymentMethod.userId)
+          .where('id', '!=', userPaymentMethod.id)
+          .update({ isDefault: false })
       return response.created({
         status: 'success',
         data: userPaymentMethod,
@@ -82,6 +88,13 @@ export default class UserPaymentMethodsController {
           data: [],
           msg: 'método de pago no encontrado.',
         })
+      }
+      if (data.isDefault) {
+        // Si se marca como predeterminado, desmarcar otros métodos de pago
+        await UserPaymentMethod.query()
+          .where('user_id', userPaymentMethod.userId)
+          .where('id', '!=', userPaymentMethod.id)
+          .update({ isDefault: false })
       }
 
       userPaymentMethod.merge(data)
@@ -158,8 +171,16 @@ export default class UserPaymentMethodsController {
         last4: data.card?.last4 || '',
         expMonth: data.card?.exp_month.toString() || '',
         expYear: data.card?.exp_year || 0,
-        isDefault: false,
+        isDefault: true,
       })
+
+     
+        // Si se marca como predeterminado, desmarcar otros métodos de pago
+        await UserPaymentMethod.query()
+          .where('user_id', userPaymentMethod.userId)
+          .where('id', '!=', userPaymentMethod.id)
+          .update({ isDefault: false })
+      
 
       return response.created({
         status: 'success',
@@ -199,6 +220,41 @@ export default class UserPaymentMethodsController {
       })
     }
 
+  }
+
+  async getDefault({ response, auth }: HttpContext) {
+    try {
+      const user = await User.findBy('id', auth.user!.id)
+      if (!user) {
+        return response.notFound({
+          status: 'error',
+          msg: 'Usuario no encontrado.',
+        })
+      }
+      const userPaymentMethod = await UserPaymentMethod.query()
+        .where('user_id', user.id)
+        .where('is_default', true)
+        .first()
+
+      if (!userPaymentMethod) {
+        return response.notFound({
+          status: 'error',
+          msg: 'Método de pago predeterminado no encontrado.',
+        })
+      }
+
+      return response.ok({
+        status: 'success',
+        data: userPaymentMethod,
+        msg: 'Método de pago predeterminado obtenido exitosamente.',
+      })
+    } catch (error) {
+      return response.internalServerError({
+        status: 'error',
+        msg: 'Error al obtener el método de pago predeterminado.',
+        data: error.messages || error,
+      })
+    }
   }
 }
 

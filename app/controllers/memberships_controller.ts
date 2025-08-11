@@ -2,13 +2,26 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Membership from '#models/membership'
 import { storeMembershipValidator, updateMembershipValidator } from '#validators/membership'
+import StripeService from '#services/stripe_service'
 
 export default class MembershipsController  {
   // Crear membresía
   async store({ request, response }: HttpContext) {
     try {
       const data = await request.validateUsing(storeMembershipValidator)
-      const membership = await Membership.create(data)
+      const product = await StripeService.createProduct(data.name)
+      const price = await StripeService.createPrice(product.id, data.price, data.durationDays)
+      if (!product || !price) {
+        return response.badRequest({
+          status: 'error',
+          msg: 'Error al crear el producto o el precio en Stripe.',
+        })
+      }
+      const membership = await Membership.create({
+        ...data,
+        stripeProductId: product.id,
+        stripePriceId: price.id,
+      })
 
       return response.created({
         status: 'success',
@@ -82,6 +95,28 @@ export default class MembershipsController  {
           msg: 'Membresía no encontrada.',
         })
       }
+
+      if (data.name) {
+        const product = await StripeService.updateProduct(membership.stripeProductId, data.name)
+        if (!product) {
+          return response.badRequest({
+            status: 'error',
+            msg: 'Error al actualizar el producto en Stripe.',
+          })
+        }
+      }
+
+      if (data.price || data.durationDays) {
+        const price = await StripeService.createPrice(membership.stripeProductId, data.price ? data.price : membership.price , data.durationDays ? data.durationDays : membership.durationDays)
+        if (!price) {
+          return response.badRequest({
+            status: 'error',
+            msg: 'Error al actualizar el precio en Stripe.',
+          })
+        }
+      }
+
+
 
       membership.merge(data)
       await membership.save()

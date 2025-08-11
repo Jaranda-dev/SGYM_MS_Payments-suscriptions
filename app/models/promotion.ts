@@ -10,6 +10,8 @@ export default class Promotion extends BaseModel {
   @column() declare name: string
   @column() declare discount: number
   @column({ columnName: 'membership_id' }) declare membershipId: number
+  @column() declare stripeCouponId: string
+
 
   @belongsTo(() => Membership) declare membership: BelongsTo<typeof Membership>
   @hasMany(() => UserPromotion) declare userPromotions: HasMany<typeof UserPromotion>

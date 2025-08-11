@@ -10,7 +10,8 @@ export default class Membership extends BaseModel {
   @column() declare name: string
   @column({ columnName: 'duration_days' }) declare durationDays: number
   @column() declare price: number
-
+  @column() declare stripePriceId: string
+  @column() declare stripeProductId: string
   @hasMany(() => Subscription) declare subscriptions: HasMany<typeof Subscription>
   @hasMany(() => Promotion) declare promotions: HasMany<typeof Promotion>
 }

@@ -1,3 +1,4 @@
+import Membership from '#models/membership'
 import Profile from '#models/profile'
 import User from '#models/user'
 import env from '#start/env'
@@ -104,5 +105,79 @@ public static async retrieveCustomerByUserId(user_id: number) {
   public static async retrieveMethod(paymentMethodId: string) {
     return await stripe.paymentMethods.retrieve(paymentMethodId)
   }
+
+  public static async createProduct(name: string) {
+  return await stripe.products.create({
+    name
+  })
+}
+
+public static async updateProduct(productId: string, name: string) {
+  return await stripe.products.update(productId, { name })
+}
+
+public static async createPrice(
+  productId: string,
+  unitAmount: number, 
+  intervalCount: number 
+) {
+  return await stripe.prices.create({
+    product: productId,
+    unit_amount: unitAmount * 100,
+    currency: 'mxn',
+    recurring: { 
+      interval: 'day', 
+      interval_count: intervalCount 
+    },
+  })
+}
+
+
+
+public static async createCoupon(
+  name: string,
+  percentOff: number,
+) {
+  return await stripe.coupons.create({
+    name,
+    percent_off: percentOff,
+    duration: 'once', 
+    currency: 'mxn'
+  })
+}
+
+public static async deleteCoupon(couponId: string) {
+  return await stripe.coupons.del(couponId)
+}
+public static async updateCoupon(couponId: string, data: { name?: string; percent_off?: number }) {
+  return await stripe.coupons.update(couponId, data)
+}
+
+public static async retrieveProduct(productId: string) {
+  return await stripe.products.retrieve(productId)
+}
+
+public static async retrieveCoupon(couponId: string) {
+  return await stripe.coupons.retrieve(couponId)
+}
+
+public static async retrieveSubscriptionByCustomerId(customerId: string) {
+  const subscriptions = await stripe.subscriptions.list({ customer: customerId })
+  return subscriptions.data[0] || null
+}
+
+public static async updateSubscriptionPrice(
+  stripeSubscription: Stripe.Subscription,
+  membership: Membership
+) {
+  await stripe.subscriptions.update(stripeSubscription.id, {
+    items: [{
+      id: stripeSubscription.items.data[0].id,
+      price: membership.stripePriceId,
+    }],
+    billing_cycle_anchor: (stripeSubscription as any).current_period_end,
+    proration_behavior: 'none'
+  })
+}
 
 }

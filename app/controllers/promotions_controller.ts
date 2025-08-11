@@ -1,23 +1,25 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Promotion from '#models/promotion'
 import { storePromotionValidator, updatePromotionValidator } from '#validators/Promotion'
-import { DateTime } from 'luxon'
+import StripeService from '#services/stripe_service'
 
-export default class PromotionsController{
-  // Crear membresía
+import UserPromotion from '#models/user_promotion'
+
+export default class PromotionsController {
+  // Crear promoción
   async store({ request, response }: HttpContext) {
     try {
       const data = await request.validateUsing(storePromotionValidator)
+      const stripeProduct = await StripeService.createCoupon(data.name, data.discount,)
       const promotion = await Promotion.create({
         ...data,
-        startDate: DateTime.fromJSDate(data.startDate),
-        endDate: DateTime.fromJSDate(data.endDate),
+        stripeCouponId: stripeProduct.id,
       })
 
       return response.created({
         status: 'success',
         data: promotion,
-        msg: 'promoción creada exitosamente.',
+        msg: 'Promoción creada exitosamente.',
       })
     } catch (error) {
       return response.badRequest({
@@ -28,7 +30,7 @@ export default class PromotionsController{
     }
   }
 
-  // Obtener todas las membresías
+  // Obtener todas las promociones
   async index({ response }: HttpContext) {
     try {
       const promotions = await Promotion.all()
@@ -46,7 +48,7 @@ export default class PromotionsController{
     }
   }
 
-  // Obtener una membresía por ID
+  // Obtener una promoción por ID
   async show({ params, response }: HttpContext) {
     try {
       const promotion = await Promotion.find(params.id)
@@ -55,14 +57,14 @@ export default class PromotionsController{
         return response.notFound({
           status: 'error',
           data: [],
-          msg: 'promoción no encontrada.',
+          msg: 'Promoción no encontrada.',
         })
       }
 
       return response.ok({
         status: 'success',
         data: promotion,
-        msg: 'promoción obtenido exitosamente.',
+        msg: 'Promoción obtenida exitosamente.',
       })
     } catch (error) {
       return response.internalServerError({
@@ -73,7 +75,7 @@ export default class PromotionsController{
     }
   }
 
-  // Actualizar membresía
+  // Actualizar promoción
   async update({ params, request, response }: HttpContext) {
     try {
       const data = await request.validateUsing(updatePromotionValidator)
@@ -83,23 +85,26 @@ export default class PromotionsController{
         return response.notFound({
           status: 'error',
           data: [],
-          msg: 'promoción no encontrada.',
+          msg: 'Promoción no encontrada.',
         })
       }
 
       // Convert startDate and endDate to DateTime if present
       const updateData = {
-        ...data,
-        startDate: data.startDate ? DateTime.fromJSDate(data.startDate) : undefined,
-        endDate: data.endDate ? DateTime.fromJSDate(data.endDate) : undefined,
+        ...data
       }
+       await StripeService.updateCoupon(promotion.stripeCouponId, {
+        name: data.name,
+        percent_off: data.discount,
+      })
+
       promotion.merge(updateData)
       await promotion.save()
 
       return response.ok({
         status: 'success',
         data: promotion,
-        msg: 'promoción actualizado exitosamente.',
+        msg: 'Promoción actualizada exitosamente.',
       })
     } catch (error) {
       return response.badRequest({
@@ -110,7 +115,7 @@ export default class PromotionsController{
     }
   }
 
-  // Eliminar membresía
+  // Eliminar promoción
   async destroy({ params, response }: HttpContext) {
     try {
       const promotion = await Promotion.find(params.id)
@@ -119,7 +124,7 @@ export default class PromotionsController{
         return response.notFound({
           status: 'error',
           data: [],
-          msg: 'promoción no encontrada.',
+          msg: 'Promoción no encontrada.',
         })
       }
 
@@ -128,12 +133,43 @@ export default class PromotionsController{
       return response.ok({
         status: 'success',
         data: { id: promotion.id },
-        msg: 'promoción eliminado exitosamente.',
+        msg: 'Promoción eliminada exitosamente.',
       })
     } catch (error) {
       return response.internalServerError({
         status: 'error',
         msg: 'Error al eliminar la promoción.',
+        data: error.messages || error,
+      })
+    }
+  }
+
+  // Obtener promociones de una membresía que el usuario no ha usado
+  async getPromotionByMembership({ params, response, auth }: HttpContext) {
+    try {
+      const user = auth.user
+      if (!user) {
+        return response.unauthorized({
+          status: 'error',
+          msg: 'Usuario no autenticado.',
+        })
+      }
+      const promotions = await Promotion.query().where('membership_id', params.id)
+      const userPromotions = await UserPromotion.query()
+        .where('user_id', user.id)
+        .whereIn('promotion_id', promotions.map(p => p.id))
+      const promotionsNotUsed = promotions.filter(promotion =>
+        !userPromotions.some(up => up.promotionId === promotion.id)
+      )
+      return response.ok({
+        status: 'success',
+        data: promotionsNotUsed,
+        msg: 'Promociones obtenidas exitosamente.',
+      })
+    } catch (error) {
+      return response.internalServerError({
+        status: 'error',
+        msg: 'Error al obtener las promociones.',
         data: error.messages || error,
       })
     }
