@@ -243,6 +243,9 @@ async subscribe({ request, response, auth }: HttpContext) {
 
       await StripeService.updateSubscriptionPrice(stripeSubscription, membership)
     } else {
+      console.log('No existing Stripe subscription found, creating a new one.')
+      console.log('Creating Stripe subscription with price ID:', membership.stripePriceId)
+      console.log('User Stripe ID:', userStripe.id)
       await StripeService.createSubscription(userStripe.id, membership.stripePriceId)
     }
 
