@@ -216,10 +216,42 @@ public static async deleteSubscription(subscriptionId: string) {
       )
 
       switch (event.type) {
-        case 'customer.subscription.created': {
-          const subscription = event.data.object as Stripe.Subscription
-          console.log('🟢 Suscripción creada:', subscription.id)
-          // Aquí puedes crear el registro local si lo necesitas
+        
+        case 'customer.subscription.created':  {
+          const invoice = event.data.object  as Stripe.Invoice
+          const subscriptionId = invoice.subscription as string
+          console.log('✅ Pago exitoso para suscripción:', subscriptionId)
+
+          // Buscar la suscripción local
+          const localSubscription = await Subscription.findBy('stripeSubscriptionId', subscriptionId)
+          if (localSubscription) {
+            // Registrar el PaymentRequest
+            const paymentRequest = await PaymentRequest.create({
+              userId: localSubscription.userId,
+              paymentMethodId: 1, // Cambia esto si tienes el método real
+              externalReference: invoice.id,
+              amount: invoice.amount_paid / 100,
+              currency: invoice.currency,
+              status: 'success',
+              description: invoice.description || 'Pago de suscripción',
+              metadata: JSON.stringify(invoice.metadata),
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            })
+
+            // Registrar el pago
+            await Payment.create({
+              paymentRequestId: paymentRequest.id,
+              subscriptionId: localSubscription.id,
+              amount: invoice.amount_paid / 100,
+              paymentDate: DateTime.now(),
+              concept: invoice.description || 'Pago de suscripción',
+              status: 'success',
+              createdAt: DateTime.now(),
+            })
+          } else {
+            console.warn('No se encontró la suscripción local para el pago:', subscriptionId)
+          }
           break
         }
 
