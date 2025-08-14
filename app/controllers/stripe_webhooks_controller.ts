@@ -11,12 +11,14 @@ export default class StripeWebhooksController  {
         return response.badRequest({ error: 'Falta la firma de Stripe' })
       }
 
+      // Usa el body crudo tal cual lo recibes
       const rawBody = request.raw()
       if (!rawBody) {
         return response.badRequest({ error: 'El cuerpo de la solicitud está vacío' })
       }
-      const bufferBody = Buffer.from(rawBody, 'utf8')
-      await StripeService.handleWebhook(bufferBody, signature)
+
+      // Si rawBody ya es un Buffer, pásalo directo. Si es string, pásalo directo.
+      await StripeService.handleWebhook(rawBody, signature)
 
       return response.ok({ received: true })
     } catch (error) {
