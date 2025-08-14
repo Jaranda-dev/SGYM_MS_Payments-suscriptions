@@ -202,17 +202,18 @@ public static async deleteSubscription(subscriptionId: string) {
 }
 
   public static async handleWebhook(rawBody: Buffer | string, signature: string): Promise<{ success: boolean }> {
-    const stripeSecretKey = env.get('STRIPE_SECRET_KEY')
-    if (!stripeSecretKey) {
-      throw new Error('STRIPE_SECRET_KEY is not defined in environment variables')
-    }
+    
+    const stripewebhooksecret = env.get('STRIPE_WEBHOOK_SECRET')
+   if (!stripewebhooksecret) {
+     throw new Error('STRIPE_WEBHOOK_SECRET is not defined in environment variables')
+   }
 
     try {
       const stripe = StripeService.webhooks()
       const event = (await stripe).webhooks.constructEvent(
         rawBody,
         signature,
-        stripeSecretKey
+        stripewebhooksecret
       )
 
       switch (event.type) {
