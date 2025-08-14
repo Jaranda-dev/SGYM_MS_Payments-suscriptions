@@ -238,12 +238,12 @@ public static async deleteSubscription(subscriptionId: string) {
             const paymentRequest = await PaymentRequest.create({
               userId: localSubscription.userId,
               paymentMethodId: 1, // Cambia esto si tienes el método real
-              externalReference: invoice.id,
-              amount: invoice.amount_paid / 100,
-              currency: invoice.currency,
+              externalReference: subscription.id,
+              amount: subscription.amount_paid / 100,
+              currency: subscription.currency,
               status: 'success',
-              description: invoice.description || 'Pago de suscripción',
-              metadata: JSON.stringify(invoice.metadata),
+              description: subscription.description || 'Pago de suscripción',
+              metadata: JSON.stringify(subscription.metadata),
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),
             })
@@ -252,14 +252,14 @@ public static async deleteSubscription(subscriptionId: string) {
             await Payment.create({
               paymentRequestId: paymentRequest.id,
               subscriptionId: localSubscription.id,
-              amount: invoice.amount_paid / 100,
+              amount: subscription.amount_paid ? subscription.amount_paid / 100 : 0,
               paymentDate: DateTime.now(),
-              concept: invoice.description || 'Pago de suscripción',
+              concept: subscription.description || 'Pago de suscripción',
               status: 'success',
               createdAt: DateTime.now(),
             })
           } else {
-            console.warn('No se encontró la suscripción local para el pago:', subscriptionId)
+            console.warn('No se encontró la suscripción local para el pago:', subscription.id)
           }
           break
         }
