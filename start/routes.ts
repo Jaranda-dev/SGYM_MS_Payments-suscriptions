@@ -8,6 +8,7 @@ import PaymentsController from '#controllers/payments_controller'
 import PromotionsController from '#controllers/promotions_controller'
 import UserPaymentMethodsController from '#controllers/user_payment_methods_controller'
 import UserPromotionsController from '#controllers/user_promotions_controller'
+import StripeWebhooksController from '#controllers/stripe_webhooks_controller'
 import { middleware } from './kernel.js'
 
 router.group(() => {
@@ -92,4 +93,4 @@ router.group(() => {
   router.delete('/:id', [UserPromotionsController, 'destroy']).use(middleware.checkPermission(['delete_user_promotions']))
 }).prefix('/user-promotions').use(middleware.auth())
 
-router.post('/stripe/webhook', 'StripeWebhookController.handle')
+router.post('/stripe/webhook', [StripeWebhooksController, 'handle'])
