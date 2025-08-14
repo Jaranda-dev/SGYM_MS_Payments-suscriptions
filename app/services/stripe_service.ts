@@ -221,6 +221,7 @@ public static async deleteSubscription(subscriptionId: string) {
         case 'customer.subscription.created':  {
           const invoice = event.data.object  as Stripe.Invoice
           const subscriptionId = invoice.subscription as string
+          console.log('📦 Nueva suscripción creada:', invoice)
           console.log('✅ Pago exitoso para suscripción:', subscriptionId)
 
           // Buscar la suscripción local
