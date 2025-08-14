@@ -219,13 +219,20 @@ public static async deleteSubscription(subscriptionId: string) {
       switch (event.type) {
         
         case 'customer.subscription.created':  {
-          const invoice = event.data.object  as Stripe.Invoice
-          const subscriptionId = invoice.subscription as string
-          console.log('📦 Nueva suscripción creada:', invoice)
-          console.log('✅ Pago exitoso para suscripción:', subscriptionId)
+            const subscription = event.data.object as Stripe.Subscription
+
+  // Acceder al primer item de la suscripción
+  const firstItem = subscription.items?.data?.[0]
+  if (firstItem && firstItem.price) {
+    const priceId = firstItem.price.id
+    console.log('ID del precio:', priceId)
+    // Puedes usar priceId aquí
+  }
+          console.log('📦 Nueva suscripción creada:', subscription.id)
+          console.log('✅ Pago exitoso para suscripción:', subscription.id)
 
           // Buscar la suscripción local
-          const localSubscription = await Subscription.findBy('stripeSubscriptionId', subscriptionId)
+          const localSubscription = await Subscription.findBy('stripeSubscriptionId', subscription.id)
           if (localSubscription) {
             // Registrar el PaymentRequest
             const paymentRequest = await PaymentRequest.create({
