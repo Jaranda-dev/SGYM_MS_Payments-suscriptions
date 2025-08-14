@@ -4,6 +4,7 @@ import Membership from '#models/membership'
 import { storeMembershipValidator, updateMembershipValidator } from '#validators/membership'
 import StripeService from '#services/stripe_service'
 
+
 export default class MembershipsController  {
   // Crear membresía
   async store({ request, response }: HttpContext) {
@@ -14,14 +15,28 @@ export default class MembershipsController  {
       if (!product || !price) {
         return response.badRequest({
           status: 'error',
+         
           msg: 'Error al crear el producto o el precio en Stripe.',
         })
       }
-      const membership = await Membership.create({
+
+      let membership = await Membership.onlyTrashed().where('name', data.name).first()
+      console.log(membership);
+
+
+      if (membership) {
+        membership.merge(data)
+        membership.restore()
+        await membership.save()
+      }
+      else {
+
+        membership = await Membership.create({
         ...data,
         stripeProductId: product.id,
         stripePriceId: price.id,
       })
+    }
 
       return response.created({
         status: 'success',

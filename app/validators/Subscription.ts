@@ -4,10 +4,7 @@ export const storeSubscriptionValidator = vine.compile(
   vine.object({
     userId: vine.number(),
     membershipId: vine.number(),
-    startDate: vine.date(),
-    endDate: vine.date(),
-    status: vine.enum(['active', 'cancelled', 'expired']),
-    isRenewable: vine.boolean().optional(),
+    paymentMethodId: vine.number().optional(),
   })
 )
 

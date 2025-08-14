@@ -34,6 +34,9 @@ export default class PromotionsController {
   async index({ response }: HttpContext) {
     try {
       const promotions = await Promotion.all()
+      for (const promotion of promotions) {
+        await promotion.preload('membership')
+      }
       return response.ok({
         status: 'success',
         data: promotions,

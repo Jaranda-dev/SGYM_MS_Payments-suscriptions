@@ -17,6 +17,7 @@ export default class Subscription extends SoftDelete(BaseModel) {
   @column.date() declare startDate: DateTime
   @column.date() declare endDate: DateTime
   @column.date() declare canceledAt: DateTime
+  @column() public stripeSubscriptionId?: string  
 
   @belongsTo(() => User) declare user: BelongsTo<typeof User>
   @belongsTo(() => Membership) declare membership: BelongsTo<typeof Membership>

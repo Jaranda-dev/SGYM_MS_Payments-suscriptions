@@ -27,6 +27,12 @@ export default class PaymentsController {
   async index({ response }: HttpContext) {
     try {
       const payments = await Payment.all()
+      for (const payment of payments) {
+        await payment.preload('subscription')
+        await payment.subscription?.preload('membership')
+        await payment.preload('paymentRequest')
+        await payment.paymentRequest?.preload('user')
+      }
       return response.ok({
         status: 'success',
         data: payments,

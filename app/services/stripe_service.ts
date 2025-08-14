@@ -1,7 +1,11 @@
 import Membership from '#models/membership'
+import Payment from '#models/payment'
+import PaymentRequest from '#models/payment_request'
 import Profile from '#models/profile'
+import Subscription from '#models/subscription'
 import User from '#models/user'
 import env from '#start/env'
+import { DateTime } from 'luxon'
 import Stripe from 'stripe'
 
 
@@ -15,6 +19,12 @@ const stripe = new Stripe(stripeSecretKey, {
 
 
 export default class StripeService {
+
+  public static async webhooks() {
+
+    return stripe;
+
+  }
 
   public static async SetupIntent( payment_method_types: string[], customerId: string , user_id: string) {
     return await stripe.setupIntents.create({
@@ -190,4 +200,119 @@ public static async updateSubscriptionPrice(
 public static async deleteSubscription(subscriptionId: string) {
   return await stripe.subscriptions.cancel(subscriptionId)
 }
+
+  public static async handleWebhook(rawBody: Buffer, signature: string): Promise<{ success: boolean }> {
+    const stripeSecretKey = env.get('STRIPE_SECRET_KEY')
+    if (!stripeSecretKey) {
+      throw new Error('STRIPE_SECRET_KEY is not defined in environment variables')
+    }
+
+    try {
+      const stripe = StripeService.webhooks()
+      const event = (await stripe).webhooks.constructEvent(
+        rawBody,
+        signature,
+        stripeSecretKey
+      )
+
+      switch (event.type) {
+        case 'customer.subscription.created': {
+          const subscription = event.data.object as Stripe.Subscription
+          console.log('🟢 Suscripción creada:', subscription.id)
+          // Aquí puedes crear el registro local si lo necesitas
+          break
+        }
+
+        case 'customer.subscription.updated': {
+          const subscription = event.data.object as Stripe.Subscription
+          console.log('🔵 Suscripción actualizada:', subscription.id)
+          const localSubscription = await Subscription.findBy('stripeSubscriptionId', subscription.id)
+          if (localSubscription) {
+            localSubscription.status = subscription.status as 'active' | 'expired' | 'canceled'
+            await localSubscription.save()
+          }
+          break
+        }
+
+        case 'customer.subscription.deleted': {
+          const subscription = event.data.object as Stripe.Subscription
+          console.log('❌ Suscripción cancelada:', subscription.id)
+          const localSubscription = await Subscription.findBy('stripeSubscriptionId', subscription.id)
+          if (localSubscription) {
+            localSubscription.status = 'canceled'
+            await localSubscription.save()
+          }
+          break
+        }
+
+        case 'customer.subscription.paused': {
+          const subscription = event.data.object as Stripe.Subscription
+          console.log('⏸️ Suscripción pausada:', subscription.id)
+          // Actualiza estado local si lo necesitas
+          break
+        }
+
+        case 'customer.subscription.resumed': {
+          const subscription = event.data.object as Stripe.Subscription
+          console.log('▶️ Suscripción reanudada:', subscription.id)
+          // Actualiza estado local si lo necesitas
+          break
+        }
+
+        case 'invoice.payment_succeeded': {
+          const invoice = event.data.object as Stripe.Invoice
+          const subscriptionId = invoice.subscription as string
+          console.log('✅ Pago exitoso para suscripción:', subscriptionId)
+
+          // Buscar la suscripción local
+          const localSubscription = await Subscription.findBy('stripeSubscriptionId', subscriptionId)
+          if (localSubscription) {
+            // Registrar el PaymentRequest
+            const paymentRequest = await PaymentRequest.create({
+              userId: localSubscription.userId,
+              paymentMethodId: 1, // Cambia esto si tienes el método real
+              externalReference: invoice.id,
+              amount: invoice.amount_paid / 100,
+              currency: invoice.currency,
+              status: 'success',
+              description: invoice.description || 'Pago de suscripción',
+              metadata: JSON.stringify(invoice.metadata),
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            })
+
+            // Registrar el pago
+            await Payment.create({
+              paymentRequestId: paymentRequest.id,
+              subscriptionId: localSubscription.id,
+              amount: invoice.amount_paid / 100,
+              paymentDate: DateTime.now(),
+              concept: invoice.description || 'Pago de suscripción',
+              status: 'success',
+              createdAt: DateTime.now(),
+            })
+          } else {
+            console.warn('No se encontró la suscripción local para el pago:', subscriptionId)
+          }
+          break
+        }
+
+        case 'invoice.payment_failed': {
+          const invoice = event.data.object as Stripe.Invoice
+          console.warn('⚠️ Pago fallido para suscripción:', invoice.subscription)
+          // Actualiza estado local si lo necesitas
+          break
+        }
+
+        default:
+          console.log(`📌 Evento Stripe no manejado: ${event.type}`)
+      }
+
+      return { success: true }
+    } catch (error) {
+      console.error('❌ Error procesando webhook:', error)
+      return { success: false, error: error.message || error }
+    }
+  }
+
 }

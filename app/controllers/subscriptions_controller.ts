@@ -7,6 +7,11 @@ import Membership from '#models/membership'
 import Promotion from '#models/promotion'
 import UserPromotion from '#models/user_promotion'
 import StripeService from '#services/stripe_service'
+import Payment from '#models/payment'
+import PaymentRequest from '#models/payment_request'
+import Stripe from 'stripe'
+
+
 
 
 
@@ -16,13 +21,65 @@ export default class SubscriptionsController{
     try {
       const data = await request.validateUsing(storeSubscriptionValidator)
       // Convert startDate and endDate from JS Date to Luxon DateTime
-      const { startDate, endDate, ...rest } = data
+
+      const membership = await Membership.find(data.membershipId)
+      if (!membership) {
+        return response.notFound({
+          status: 'error',
+          data: [],
+          msg: 'Membresía no encontrada.',
+        })
+      }
+      const existingSubscription = await Subscription.query()
+        .where('userId', data.userId)
+        .where('status', 'active')
+        .first()
+
+        const restDays  = existingSubscription ? existingSubscription.endDate.diffNow('days').days : 0
+
+      const startDate = DateTime.now()
+
+      const endDate = DateTime.now().plus({ days: membership.durationDays + restDays })
+
       const subscription = await Subscription.create({
-        ...rest,
-        status: rest.status === 'cancelled' ? 'canceled' : rest.status,
-        startDate: DateTime.fromJSDate(startDate),
-        endDate: DateTime.fromJSDate(endDate),
+
+        userId: data.userId,
+        membershipId: data.membershipId,
+        startDate,
+        endDate,
+        status: 'active',
+        isRenewable: false,
       })
+
+      existingSubscription.status = 'canceled'
+      await existingSubscription.save()
+
+      const paymentRequest = await PaymentRequest.create({
+         userId: data.userId,
+    paymentMethodId: data.paymentMethodId,
+    deletedAt: null,
+    status: 'success',
+    externalReference: '',
+    amount: membership.price,
+    currency: 'MXN',
+    description: '',
+    metadata: '',
+    createdAt: DateTime.now(),
+    updatedAt: DateTime.now(),
+      })
+
+      await Payment.create({
+        paymentRequestId: paymentRequest.id,
+        subscriptionId: subscription.id,
+        amount: membership.price,
+        paymentDate: DateTime.now(),
+        createdAt: DateTime.now(),
+        
+        status: 'pending',
+        concept: 'Suscripción a ' + membership.name,
+      })
+
+    
 
       return response.created({
         status: 'success',
@@ -42,6 +99,10 @@ export default class SubscriptionsController{
   async index({ response }: HttpContext) {
     try {
       const subscriptions = await Subscription.all()
+      for (const subscription of subscriptions) {
+        await subscription.preload('user')
+        await subscription.preload('membership')
+      }
       return response.ok({
         status: 'success',
         data: subscriptions,
@@ -198,7 +259,8 @@ async subscribe({ request, response, auth }: HttpContext) {
         return response.notFound({ status: 'error', msg: 'Promoción no encontrada.', data: [] })
       }
     }
-
+let  subscriptionS
+    
     // Obtener cliente Stripe
     const userStripe = await StripeService.retrieveCustomerByUserId(user.id)
 
@@ -246,7 +308,7 @@ async subscribe({ request, response, auth }: HttpContext) {
       console.log('No existing Stripe subscription found, creating a new one.')
       console.log('Creating Stripe subscription with price ID:', membership.stripePriceId)
       console.log('User Stripe ID:', userStripe.id)
-      await StripeService.createSubscription(userStripe.id, membership.stripePriceId)
+       subscriptionS =  await StripeService.createSubscription(userStripe.id, membership.stripePriceId)
     }
 
     // Crear o actualizar registro local
@@ -260,6 +322,8 @@ async subscribe({ request, response, auth }: HttpContext) {
         membershipId: membership.id,
         startDate,
         endDate,
+        stripeSubscriptionId: stripeSubscription?.id || subscription.stripeSubscriptionId,
+
       })
       await subscription.save()
     } else {
@@ -270,13 +334,16 @@ async subscribe({ request, response, auth }: HttpContext) {
         isRenewable: data.isRenewable,
         startDate,
         endDate,
+        stripeSubscriptionId: subscriptionS?.id 
       })
     }
-
+    
     if (promotion) {
       await UserPromotion.create({
         userId: user.id,
         promotionId: promotion.id,
+        appliedAt: DateTime.now(),
+        expiredAt: DateTime.now(),
       })
     }
 

@@ -92,3 +92,4 @@ router.group(() => {
   router.delete('/:id', [UserPromotionsController, 'destroy']).use(middleware.checkPermission(['delete_user_promotions']))
 }).prefix('/user-promotions').use(middleware.auth())
 
+router.post('/stripe/webhook', 'StripeWebhookController.handle')
