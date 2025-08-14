@@ -243,7 +243,7 @@ public static async deleteSubscription(subscriptionId: string) {
     // Registrar el PaymentRequest
     const paymentRequest = await PaymentRequest.create({
       userId: localSubscription.userId,
-      paymentMethodId: 1, // Cambia esto si tienes el método real
+      paymentMethodId: 3, // Cambia esto si tienes el método real
       externalReference: subscription.id,
       amount: firstItem?.price?.unit_amount ? firstItem.price.unit_amount / 100 : 0,
       currency: firstItem?.price?.currency || subscription.currency,
