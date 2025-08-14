@@ -17,7 +17,7 @@ export default class StripeWebhooksController  {
         return response.badRequest({ error: 'El cuerpo de la solicitud está vacío' })
       }
 
-      // Si rawBody ya es un Buffer, pásalo directo. Si es string, pásalo directo.
+      // PASA EL RAW BODY DIRECTO, NO LO CONVIERTAS A BUFFER SI YA ES BUFFER
       await StripeService.handleWebhook(rawBody, signature)
 
       return response.ok({ received: true })
