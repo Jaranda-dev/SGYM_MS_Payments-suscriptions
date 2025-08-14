@@ -7,6 +7,7 @@ export default class PaymentMethodsController{
   async store({ request, response }: HttpContext) {
     try {
       const data = await request.validateUsing(storePaymentMethodValidator)
+      data.isActive = true
       const paymentMethod = await PaymentMethod.create(data)
 
       return response.created({
