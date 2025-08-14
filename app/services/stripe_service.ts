@@ -218,51 +218,57 @@ public static async deleteSubscription(subscriptionId: string) {
 
       switch (event.type) {
         
-        case 'customer.subscription.created':  {
-            const subscription = event.data.object as Stripe.Subscription
+        case 'customer.subscription.created': {
+  const subscription = event.data.object as Stripe.Subscription
 
   // Acceder al primer item de la suscripción
   const firstItem = subscription.items?.data?.[0]
+  let priceId: string | null = null
   if (firstItem && firstItem.price) {
-    const priceId = firstItem.price.id
+    priceId = firstItem.price.id
     console.log('ID del precio:', priceId)
-    // Puedes usar priceId aquí
   }
-          console.log('📦 Nueva suscripción creada:', subscription.id)
-          console.log('✅ Pago exitoso para suscripción:', subscription.id)
 
-          // Buscar la suscripción local
-          const localSubscription = await Subscription.findBy('stripeSubscriptionId', subscription.id)
-          if (localSubscription) {
-            // Registrar el PaymentRequest
-            const paymentRequest = await PaymentRequest.create({
-              userId: localSubscription.userId,
-              paymentMethodId: 1, // Cambia esto si tienes el método real
-              externalReference: subscription.id,
-              amount: subscription.amount_paid / 100,
-              currency: subscription.currency,
-              status: 'success',
-              description: subscription.description || 'Pago de suscripción',
-              metadata: JSON.stringify(subscription.metadata),
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-            })
+  console.log('📦 Nueva suscripción creada:', subscription.id)
 
-            // Registrar el pago
-            await Payment.create({
-              paymentRequestId: paymentRequest.id,
-              subscriptionId: localSubscription.id,
-              amount: subscription.amount_paid ? subscription.amount_paid / 100 : 0,
-              paymentDate: DateTime.now(),
-              concept: subscription.description || 'Pago de suscripción',
-              status: 'success',
-              createdAt: DateTime.now(),
-            })
-          } else {
-            console.warn('No se encontró la suscripción local para el pago:', subscription.id)
-          }
-          break
-        }
+  // Buscar la suscripción local
+  const localSubscription = await Subscription.findBy('stripeSubscriptionId', subscription.id)
+  if (localSubscription) {
+    // Opcional: guardar el priceId en la suscripción local si tienes ese campo
+    if (priceId && localSubscription.priceId !== priceId) {
+      localSubscription.priceId = priceId
+      await localSubscription.save()
+    }
+
+    // Registrar el PaymentRequest
+    const paymentRequest = await PaymentRequest.create({
+      userId: localSubscription.userId,
+      paymentMethodId: 1, // Cambia esto si tienes el método real
+      externalReference: subscription.id,
+      amount: firstItem?.price?.unit_amount ? firstItem.price.unit_amount / 100 : 0,
+      currency: firstItem?.price?.currency || subscription.currency,
+      status: 'success',
+      description: subscription.description || 'Pago de suscripción',
+      metadata: JSON.stringify(subscription.metadata),
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    })
+
+    // Registrar el pago
+    await Payment.create({
+      paymentRequestId: paymentRequest.id,
+      subscriptionId: localSubscription.id,
+      amount: firstItem?.price?.unit_amount ? firstItem.price.unit_amount / 100 : 0,
+      paymentDate: DateTime.now(),
+      concept: subscription.description || 'Pago de suscripción',
+      status: 'success',
+      createdAt: DateTime.now(),
+    })
+  } else {
+    console.warn('No se encontró la suscripción local para el pago:', subscription.id)
+  }
+  break
+}
 
         case 'customer.subscription.updated': {
           const subscription = event.data.object as Stripe.Subscription
